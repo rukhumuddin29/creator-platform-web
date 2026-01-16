@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Animations */
+@keyframes blob {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Desktop container and overflow fix */
+.site-inner {
+  width: 100%;
+  margin-inline: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* when viewport is large, prefer 1440px centered layout */
+@media (min-width: 1440px) {
+  .site-inner {
+    max-width: 1440px;
+    min-width: 1440px;
+  }
+}
+
+/* Ensure body overflow-x hidden at runtime as backup */
+html, body, #app {
+  overflow-x: hidden;
+}
+
+nav.header-nav {
+  min-height: 80px;
+  align-items: center;
+  display: grid;
+}
+
+.main-nav-links {
+  gap: 16px;
+}
+
+.body-pad {
+  padding-left: 50px;
+  padding-right: 50px;
+}

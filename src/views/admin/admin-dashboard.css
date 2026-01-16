@@ -1,0 +1,430 @@
+.min-h-screen {
+  gap: 25px;
+  padding: 0 20px;
+}
+.admin-dashboard-main{
+  display: grid;
+  gap: 20px;
+}
+
+.card {
+  background: #0f1625;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.sec-padding{
+  padding: 20px;
+}
+.pb-2{
+  padding-bottom: 12px;
+}
+.menu-item{
+  padding: 15px 12px;
+  margin-bottom: 5px;
+}
+
+.admin-shell .p-button {
+  background: #253142;
+  border: 1px solid #334155;
+  color: #e5e7eb;
+}
+
+.admin-shell .p-button:hover {
+  background: #2f3c50;
+  border-color: #3f4d63;
+}
+
+.admin-shell .p-button.p-button-outlined {
+  background: transparent;
+  color: #e5e7eb;
+  border-color: #3f4d63;
+}
+
+.admin-shell .p-button.p-button-text {
+  background: transparent;
+  color: #cbd5e1;
+  border-color: transparent;
+}
+
+.admin-shell .p-button.p-button-success,
+.admin-shell .p-button.p-button-secondary,
+.admin-shell .p-button.p-button-primary {
+  background: #2c3b52;
+  border-color: #3f4d63;
+  color: #e5e7eb;
+}
+
+.admin-shell .p-button.p-button-success:hover,
+.admin-shell .p-button.p-button-secondary:hover,
+.admin-shell .p-button.p-button-primary:hover {
+  background: #36465f;
+  border-color: #4b5d77;
+  color: #e5e7eb;
+}
+
+.admin-shell .p-button.p-button-sm {
+  padding: 0.45rem 0.9rem;
+}
+
+.admin-table {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0f1625;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.admin-table.p-datatable {
+  background: transparent;
+  border: none;
+}
+
+.admin-table .p-datatable-wrapper {
+  background: #0f1625;
+}
+
+.admin-table .p-datatable-table {
+  color: #e5e7eb;
+  border-collapse: collapse;
+}
+
+.admin-table .p-datatable-thead > tr > th {
+  background: #151b29;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-table .p-datatable-tbody > tr {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #0f1625;
+  transition: background 0.2s ease;
+}
+
+.admin-table .p-datatable-tbody > tr:nth-child(even),
+.admin-table .p-datatable-tbody > tr.p-row-odd {
+  background: #0b111c !important;
+}
+
+.admin-table .p-datatable-tbody > tr:nth-child(odd),
+.admin-table .p-datatable-tbody > tr.p-row-even {
+  background: #0f1625 !important;
+}
+
+.admin-table .p-datatable-tbody > tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-table .p-datatable-tbody > tr > td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.admin-badge.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.admin-badge.info {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.4);
+}
+
+.admin-badge.warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.admin-badge.danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.admin-shell .p-tag {
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  font-size: 12px;
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+}
+
+.admin-shell .p-tag.p-tag-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.admin-shell .p-tag.p-tag-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.4);
+}
+
+.admin-shell .p-tag.p-tag-warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.admin-shell .p-tag.p-tag-danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.admin-shell .p-dialog .p-dialog-header {
+  background: #0f1625;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  padding: 1rem 1.25rem;
+}
+
+.admin-shell .p-dialog .p-dialog-content {
+  background: #0f1625;
+  color: #e5e7eb;
+  padding: 1.25rem;
+}
+
+.admin-shell .p-dialog .p-dialog-footer {
+  background: #0f1625;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1rem 1.25rem;
+}
+
+.admin-shell .p-inputtext {
+  background: #0b1220;
+  border: 1px solid #1f2a3a;
+  color: #e5e7eb;
+}
+
+.admin-shell .p-inputtext:enabled:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+.admin-shell .p-checkbox .p-checkbox-box {
+  background: #0b1220;
+  border: 1px solid #334155;
+}
+
+.admin-shell .p-checkbox .p-checkbox-box.p-highlight {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.admin-shell .p-checkbox .p-checkbox-box .p-checkbox-icon {
+  color: #e5e7eb;
+}
+
+.admin-shell .p-button:enabled:hover .p-button-label,
+.admin-shell .p-button.p-button-text:enabled:hover {
+  color: #e5e7eb;
+}
+
+.admin-shell .p-button.p-button-outlined:enabled:hover {
+  background: #1f2937;
+  border-color: #3f4d63;
+  color: #e5e7eb;
+}
+
+/* Confirm dialog (global dark) */
+.p-confirm-dialog,
+.p-confirmdialog {
+  background: #0f1625 !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  min-width: 400px;
+}
+
+.p-confirm-dialog .p-dialog-header,
+.p-confirmdialog .p-dialog-header {
+  background: #0f1625 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #e5e7eb !important;
+}
+
+.p-confirm-dialog .p-dialog-content,
+.p-confirmdialog .p-dialog-content {
+  background: #0f1625 !important;
+  color: #e5e7eb !important;
+}
+
+.p-confirm-dialog .p-dialog-footer,
+.p-confirmdialog .p-dialog-footer {
+  background: #0f1625 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  gap: 10px;
+}
+
+.p-confirm-dialog .p-confirmdialog-reject-button,
+.p-confirmdialog .p-confirmdialog-reject-button {
+  color: #cbd5e1 !important;
+  background: #1f2937 !important;
+  border: 1px solid #334155 !important;
+}
+
+.p-confirm-dialog .p-confirmdialog-accept-button,
+.p-confirmdialog .p-confirmdialog-accept-button {
+  background: #a24549 !important;
+  border-color: #a24549 !important;
+  color: #fff !important;
+}
+
+.p-confirm-dialog .p-confirmdialog-accept-button:hover,
+.p-confirmdialog .p-confirmdialog-accept-button:hover {
+  background: #8a393c !important;
+  border-color: #8a393c !important;
+}
+
+.m-padding{
+  padding: 20px;
+}
+
+.p-dialog{
+  border: 1px solid #232d42 !important;
+}
+
+.p-dialog-footer{
+  gap: 10px !important;
+  padding-top: 10px !important;
+}
+
+.p-dialog-content{
+  padding-top: 20px !important;
+}
+
+.p-dialog-content label{
+  margin-bottom: 5px;
+}
+
+button{
+  cursor: pointer;
+}
+
+.p-datatable-table button:hover{
+  background-color: #2f3c50 !important;
+}
+
+.collapse-button .pi{
+  font-size: 12px;
+}
+
+.dialog-form{
+  display: grid;
+  gap: 12px;
+}
+
+.admin-shell .p-button.p-button-text:enabled:hover{
+  color: #e5e7eb;
+}
+
+.p-button-text.p-button-secondary:not(:disabled):hover {
+    background: #2c3b52;
+}
+
+.p-datatable-tbody > tr > td{
+  border-color: var(--p-button-text-secondary-color) !important;
+}
+
+.admin-tabs{
+  margin-bottom: 10PX;
+}
+
+/* Global dark palette for admin PrimeVue controls */
+:root {
+  --admin-surface: #0f1625;
+  --admin-surface-2: #0b1220;
+  --admin-border: #1f2a3a;
+  --admin-text: #e5e7eb;
+  --admin-accent: #3b82f6;
+}
+
+.admin-shell .p-dialog {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+}
+
+.admin-shell .p-inputtext,
+.admin-shell .p-password input {
+  background: var(--admin-surface-2);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-shell .p-inputtext:enabled:focus,
+.admin-shell .p-password input:enabled:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+/* Dropdown global dark theme (covers teleported panel) */
+.admin-shell .p-dropdown,
+.dark-dropdown .p-dropdown {
+  background: var(--admin-surface-2) !important;
+  border: 1px solid var(--admin-border) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-shell .p-dropdown .p-dropdown-label,
+.dark-dropdown .p-dropdown .p-dropdown-label {
+  color: var(--admin-text) !important;
+}
+
+.dark-dropdown-panel,
+.p-dropdown-panel {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.p-dropdown-items .p-dropdown-item {
+  padding: 10px 12px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+}
+
+.p-dropdown-items .p-dropdown-item.p-highlight,
+.p-dropdown-items .p-dropdown-item:hover {
+  background: #151d2c !important;
+  color: #ffffff !important;
+}
+
+.p-select{
+    background-color: #0b1220 !important;
+    border: 1px solid #222 !important;
+    color: #e5e7eb !important;
+}
+.p-select-option{
+  background: #0f1625 !important;
+  color: #b3b7bd !important;
+}
+.p-select-option.p-select-option-selected {
+    background: #0f1625 !important;
+    color: #b3b7bd !important;
+}
+.p-select-option:hover, .p-select-option:active, .p-select-option:focus{
+	background: #12192a !important;
+	color: #fff !important;
+}
