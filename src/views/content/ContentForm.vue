@@ -1,8 +1,76 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div v-if="isCreatorContext" class="creator-page settings-page">
+    <CreatorHeader :name="displayName" :avatar="headerAvatar" :tagline="headerTagline" @add="goToCreate" />
+    <CreatorNav :username="username" />
+
+    <div class="tab-content card">
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Creator Zone</p>
+          <h3>{{ isEditMode ? 'Edit Post' : 'Create New Post' }}</h3>
+          <p class="muted">Keep your posts consistent across the creator dashboard.</p>
+        </div>
+      </div>
+
+      <div class="form-shell">
+        <form @submit.prevent="handleSubmit" class="form-grid">
+          <label>
+            Title
+            <input v-model="formData.title" type="text" required placeholder="Content title" />
+          </label>
+
+          <label class="full">
+            Description
+            <textarea v-model="formData.description" rows="4" required placeholder="Describe your content..."></textarea>
+          </label>
+
+          <div class="triple-row full">
+            <label>
+              Content Type
+              <select v-model="formData.content_type" required>
+                <option value="">Select a type</option>
+                <option value="video">Video</option>
+                <option value="article">Article</option>
+                <option value="podcast">Podcast</option>
+              </select>
+            </label>
+
+            <label>
+              Media URL
+              <input v-model="formData.media_url" type="url" required placeholder="https://..." />
+            </label>
+
+            <label>
+              Thumbnail URL (Optional)
+              <input v-model="formData.thumbnail_url" type="url" placeholder="https://..." />
+            </label>
+          </div>
+
+          <label>
+            Subscription Tier
+            <input v-model="formData.subscription_tier" type="text" placeholder="e.g., premium" />
+          </label>
+
+          <label class="toggle-row">
+            <span>Publish immediately</span>
+            <input v-model="formData.is_published" type="checkbox" />
+          </label>
+
+          <div class="actions">
+            <button type="submit" class="primary" :disabled="isLoading">
+              {{ isLoading ? 'Saving...' : 'Save Content' }}
+            </button>
+            <button type="button" class="ghost" @click="goBack">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="min-h-screen bg-gray-50">
     <nav class="bg-white shadow mb-8">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <router-link to="/content" class="text-blue-600 hover:underline">← Back to Content</router-link>
+        <router-link to="/content" class="text-blue-600 hover:underline">Back to Content</router-link>
       </div>
     </nav>
 
@@ -109,10 +177,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useContentStore } from '../../stores/content'
+import CreatorHeader from '../../components/creator/CreatorHeader.vue'
+import CreatorNav from '../../components/creator/CreatorNav.vue'
 
 const router = useRouter()
 const route = useRoute()
 const contentStore = useContentStore()
+
+const username = ref(route.params.username || '')
+const displayName = ref(decodeURIComponent(username.value || 'Creator'))
+const headerAvatar = ref('')
+const headerTagline = ref('Tiny stories from a big world')
+
+const isCreatorContext = computed(() => route.name && route.name.toString().toLowerCase().includes('creator'))
 
 const formData = ref({
   title: '',
@@ -157,11 +234,139 @@ const handleSubmit = async () => {
     } else {
       await contentStore.create(formData.value)
     }
-    router.push('/content')
+    goBack()
   } catch (error) {
     alert('Failed to save content')
   } finally {
     isLoading.value = false
   }
 }
+
+const goBack = () => {
+  if (isCreatorContext.value) {
+    router.push(`/creator/${username.value}/my-posts`)
+  } else {
+    router.push('/content')
+  }
+}
+
+const goToCreate = () => {
+  router.push(`/creator/${username.value}/create-post`)
+}
 </script>
+
+<style scoped>
+.creator-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #fce5dc 0%, #ffffff 40%);
+  color: #55423d;
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  padding: 24px;
+}
+
+.tab-content {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px 22px 24px;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.08);
+  margin-top: 12px;
+  border: 1px solid #f1d8cb;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: #a17863;
+  margin: 0;
+}
+
+.form-shell {
+  border: 1px solid #f1d8cb;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fffdfb;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 16px;
+}
+
+.triple-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #5a4035;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid #e6cfc0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff7f2;
+  color: #55423d;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #f5a7a8;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.primary {
+  background: linear-gradient(135deg, #f5a7a8, #f7c8b4);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+}
+
+.ghost {
+  background: transparent;
+  color: #6d4f43;
+  border: 1px solid #e6cfc0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>

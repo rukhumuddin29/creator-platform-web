@@ -32,6 +32,7 @@ const slug = computed(() => props.username || route.params.username || 'creator'
 
 const defaultItems = computed(() => ([
   { label: 'Home', to: `/creator/${slug.value}` },
+  { label: 'My Posts', to: `/creator/${slug.value}/my-posts` },
   { label: 'Products', to: '#' },
   { label: 'Subscribers', to: '#' },
   { label: 'My Settings', to: `/creator/${slug.value}/settings` },

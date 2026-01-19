@@ -48,8 +48,20 @@
           <InputText v-model="form.slug" class="w-full dark-input" readonly />
         </div>
         <div class="field">
-          <label class="block text-sm mb-1">Logo URL</label>
-          <InputText v-model="form.logo" class="w-full dark-input" />
+          <label class="block text-sm mb-1">Logo</label>
+          <div class="space-y-2">
+            <input
+              type="file"
+              accept="image/*"
+              class="dark-input file-input w-full"
+              @change="onLogoChange"
+            />
+            <div class="text-xs text-gray-300" v-if="form.logoFile">{{ form.logoFile.name }}</div>
+            <div class="text-xs text-gray-400" v-else-if="form.logo">Current: {{ form.logo }}</div>
+            <div v-if="form.logoPreview" class="logo-preview">
+              <img :src="form.logoPreview" alt="Logo preview" />
+            </div>
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <Checkbox v-model="form.status" :binary="true" inputId="status" />
@@ -85,6 +97,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import Toast from 'primevue/toast'
 import './admin-dashboard.css'
+import { API_BASE_URL } from '../../services/api'
 
 const collapsed = ref(false)
 const platforms = ref([])
@@ -95,6 +108,8 @@ const form = ref({
   name: '',
   slug: '',
   logo: '',
+  logoFile: null,
+  logoPreview: '',
   status: true,
 })
 
@@ -123,23 +138,48 @@ const loadPlatforms = async () => {
 }
 
 const openCreate = () => {
-  form.value = { id: null, name: '', slug: '', logo: '', status: true }
+  form.value = { id: null, name: '', slug: '', logo: '', logoFile: null, logoPreview: '', status: true }
   dialogVisible.value = true
 }
 
 const openEdit = (row) => {
-  form.value = { ...row }
+  form.value = {
+    ...row,
+    logoFile: null,
+    logoPreview: row.logo ? resolveMedia(row.logo) : '',
+  }
   dialogVisible.value = true
+}
+
+const onLogoChange = (e) => {
+  const file = e.target.files?.[0]
+  form.value.logoFile = file || null
+  form.value.logoPreview = file ? URL.createObjectURL(file) : form.value.logoPreview
 }
 
 const savePlatform = async () => {
   try {
     form.value.slug = slugify(form.value.name)
+    const fd = new FormData()
+    fd.append('name', form.value.name)
+    fd.append('slug', form.value.slug)
+    fd.append('status', form.value.status ? 1 : 0)
+    if (form.value.logoFile) {
+      fd.append('logo', form.value.logoFile)
+    } else if (form.value.logo) {
+      fd.append('logo', form.value.logo)
+    }
+
     if (form.value.id) {
-      await api.put(`/social-media-platforms/${form.value.id}`, form.value)
+      fd.append('_method', 'PUT')
+      await api.post(`/social-media-platforms/${form.value.id}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
       toast.add({ severity: 'success', summary: 'Updated', detail: 'Platform updated', life: 2500 })
     } else {
-      await api.post('/social-media-platforms', form.value)
+      await api.post('/social-media-platforms', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
       toast.add({ severity: 'success', summary: 'Created', detail: 'Platform created', life: 2500 })
     }
     dialogVisible.value = false
@@ -173,6 +213,16 @@ const handleLogout = async () => {
 
 const noop = () => {}
 
+const resolveMedia = (url) => {
+  if (!url) return ''
+  const cleaned = url.toString().trim()
+  const hasImageExt = /\.(png|jpe?g|gif|webp|svg)$/i.test(cleaned.split('?')[0])
+  if (!hasImageExt) return ''
+  if (cleaned.startsWith('http')) return cleaned
+  const base = API_BASE_URL.replace(/\/api$/, '')
+  return `${base}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`
+}
+
 onMounted(() => {
   loadPlatforms()
 })
@@ -198,6 +248,23 @@ onMounted(() => {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
 }
 
+.file-input {
+  height: 42px;
+  padding: 10px 12px;
+  color: #e5e7eb;
+}
+
+.logo-preview img {
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 8px;
+  border: 1px solid #1f2a3a;
+}
+
+.p-dialog .p-button:not(.p-button-text):hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
 .dialog-form .field {
   display: flex;
   flex-direction: column;

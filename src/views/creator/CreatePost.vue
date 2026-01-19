@@ -1,25 +1,31 @@
 <template>
   <div class="creator-page settings-page">
-    <CreatorHeader :name="displayName" :avatar="headerAvatar" :tagline="headerTagline" @add="noop" />
+    <CreatorHeader :name="displayName" :avatar="headerAvatar" :tagline="headerTagline" @add="goToCreate" @logout="handleLogout" />
     <CreatorNav :username="username" />
 
     <div class="tab-content card">
-      <h3>Create New Post</h3>
-      <p class="muted">Share a new post with your subscribers. Choose a plan to target.</p>
+      <div class="card-header">
+        <div>
+          <p class="eyebrow">Creator Zone</p>
+          <h3>Create New Post</h3>
+          <p class="muted">Share a new post with your subscribers. Choose a plan to target.</p>
+        </div>
+        <div class="pill">Draft or Publish</div>
+      </div>
+
       <div v-if="status.message" class="status" :class="status.type">{{ status.message }}</div>
 
       <form class="form-grid" @submit.prevent="saveDraft">
         <div class="triple-row full">
           <label>
-            Subscription Plan
-            <select v-model="form.subscription_tier" required>
-              <option value="" disabled>Select a plan</option>
-              <option value="free">Free</option>
-              <option v-for="plan in plans" :key="plan.id" :value="plan.slug">
-                {{ plan.name }}
-              </option>
-            </select>
-          </label>
+          Subscription Plan
+          <select v-model="form.subscription_tier" required>
+            <option value="" disabled>Select a plan</option>
+            <option v-for="plan in plans" :key="plan.id" :value="plan.slug">
+              {{ plan.name }}
+            </option>
+          </select>
+        </label>
 
           <label>
             Post Title
@@ -94,7 +100,10 @@
         </div>
 
         <div class="actions full">
-          <button type="submit" class="primary">Save</button>
+          <button type="submit" class="primary" :disabled="loading">
+            <span v-if="loading" class="spinner"></span>
+            {{ loading ? 'Saving...' : 'Save' }}
+          </button>
           <button type="button" class="ghost" @click="router.back()">Cancel</button>
         </div>
       </form>
@@ -107,20 +116,27 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CreatorHeader from '../../components/creator/CreatorHeader.vue'
 import CreatorNav from '../../components/creator/CreatorNav.vue'
-import { subscriptionService } from '../../services'
+import { subscriptionService, contentService } from '../../services'
+import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const username = ref(route.params.username || 'creator')
 const displayName = ref(decodeURIComponent(username.value))
-const headerAvatar = ref('')
+const FALLBACK_AVATAR =
+  "data:image/webp;base64,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"
+const headerAvatar = ref(FALLBACK_AVATAR)
 const headerTagline = ref('Tiny stories from a big world')
+const isEdit = ref(!!route.params.id)
 
 const plans = ref([])
 const status = reactive({ message: '', type: 'success' })
+const loading = ref(false)
 
 const form = reactive({
-  subscription_tier: 'free',
+  subscription_tier: '',
   title: '',
   slug: '',
   description: '',
@@ -145,9 +161,96 @@ const loadPlans = async () => {
   }
 }
 
-const saveDraft = () => {
-  status.message = 'Post saved (UI only).'
-  status.type = 'success'
+const loadProfile = async () => {
+  try {
+    const { data } = await api.get('/user-information')
+    const payload = data.data || data
+    const assetBase = new URL(api.defaults.baseURL).origin
+    const avatarPath = payload.user?.avatar_url || payload.information?.avatar_url
+    const normalized = avatarPath
+      ? (avatarPath.startsWith('http') ? avatarPath : `${assetBase}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`)
+      : FALLBACK_AVATAR
+    headerAvatar.value = normalized
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      if (normalized && user) {
+        user.avatar_url = normalized
+        localStorage.setItem('user', JSON.stringify(user))
+      }
+    } catch {
+      // ignore
+    }
+    headerTagline.value = payload.information?.tagline || headerTagline.value
+    displayName.value = payload.user?.name || displayName.value
+  } catch {
+    // keep defaults
+  }
+}
+
+const loadPost = async () => {
+  if (!isEdit.value) return
+  try {
+    const { data } = await contentService.get(route.params.id)
+    const post = data?.data || data
+    form.subscription_tier = post.subscription_tier || ''
+    form.title = post.title || ''
+    form.slug = post.slug || ''
+    form.description = post.description || ''
+    form.content_type = post.content_type || 'article'
+    form.is_featured = !!post.is_featured
+    form.is_published = !!post.is_published
+    const assetBase = new URL(api.defaults.baseURL).origin
+    form.post_image_preview = post.media_url
+      ? (post.media_url.startsWith('http') ? post.media_url : `${assetBase}${post.media_url}`)
+      : ''
+    form.thumbnail_preview = post.thumbnail_url
+      ? (post.thumbnail_url.startsWith('http') ? post.thumbnail_url : `${assetBase}${post.thumbnail_url}`)
+      : ''
+    form.post_image_file = null
+    form.thumbnail_file = null
+  } catch (e) {
+    status.message = 'Unable to load post.'
+    status.type = 'error'
+  }
+}
+
+const saveDraft = async () => {
+  if (!form.subscription_tier || !form.title || (!isEdit.value && !form.post_image_file)) {
+    status.message = 'Please fill required fields and add a post image.'
+    status.type = 'error'
+    return
+  }
+
+  const payload = new FormData()
+  payload.append('subscription_tier', form.subscription_tier)
+  payload.append('title', form.title)
+  payload.append('slug', form.slug)
+  payload.append('description', form.description || '')
+  payload.append('content_type', form.content_type)
+  payload.append('is_featured', form.is_featured ? '1' : '0')
+  payload.append('is_published', form.is_published ? '1' : '0')
+
+  if (form.post_image_file) payload.append('post_image', form.post_image_file)
+  if (form.thumbnail_file) payload.append('thumbnail_image', form.thumbnail_file)
+
+  status.message = ''
+  loading.value = true
+  try {
+    if (isEdit.value) {
+      await contentService.update(route.params.id, payload)
+      status.message = 'Post updated successfully.'
+      status.type = 'success'
+    } else {
+      await contentService.create(payload)
+      status.message = 'Post created successfully.'
+      status.type = 'success'
+    }
+  } catch (e) {
+    status.message = 'Unable to create post. Please try again.'
+    status.type = 'error'
+  } finally {
+    loading.value = false
+  }
 }
 
 const onTitleInput = () => {
@@ -171,8 +274,23 @@ const onThumbImageChange = (event) => {
   form.thumbnail_preview = file ? URL.createObjectURL(file) : ''
 }
 
+const goToCreate = () => {
+  router.push(`/creator/${username.value}/create-post`)
+}
+
+const handleLogout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/login')
+  } catch (e) {
+    // ignore
+  }
+}
+
 onMounted(() => {
   loadPlans()
+  loadProfile()
+  loadPost()
 })
 </script>
 
@@ -188,9 +306,40 @@ onMounted(() => {
 .tab-content {
   background: #fff;
   border-radius: 18px;
-  padding: 18px;
+  padding: 20px 22px 24px;
   box-shadow: 0 10px 18px rgba(0,0,0,0.08);
   margin-top: 12px;
+  border: 1px solid #f1d8cb;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.card-header h3 {
+  margin: 4px 0 2px;
+  font-size: 22px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: #a17863;
+  margin: 0;
+}
+
+.pill {
+  background: #fff1ea;
+  color: #7d4a3a;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid #f5cbbb;
 }
 
 .form-grid {
@@ -249,6 +398,26 @@ select:focus {
   box-shadow: 0 6px 12px rgba(0,0,0,0.12);
 }
 
+.primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #fff;
+  display: inline-block;
+  margin-right: 6px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .ghost {
   background: transparent;
   color: #6d4f43;
@@ -264,6 +433,7 @@ select:focus {
   padding: 10px 12px;
   border-radius: 12px;
   font-weight: 700;
+  border: 1px solid transparent;
 }
 
 .status.success {
@@ -286,7 +456,7 @@ select:focus {
 }
 
 .toggle-row.duo {
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: 1fr;
   column-gap: 16px;
   margin-top: 4px;
 }

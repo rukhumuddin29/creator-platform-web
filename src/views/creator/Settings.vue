@@ -533,16 +533,39 @@ const setFormFromData = (info = {}, user = {}) => {
   currentPayload.user = user
 }
 
+const hydrateFromCache = () => {
+  try {
+    const cachedInfo = JSON.parse(localStorage.getItem('user_information') || '{}')
+    const cachedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    if (Object.keys(cachedInfo).length || Object.keys(cachedUser).length) {
+      setFormFromData(cachedInfo, cachedUser)
+    }
+  } catch (e) {
+    // ignore cache issues
+  }
+}
+
 const loadAccount = async () => {
   try {
     const { data } = await api.get('/user-information')
     const payload = data.data || data
     setFormFromData(payload.information || {}, payload.user || {})
+    localStorage.setItem('user_information', JSON.stringify(payload.information || {}))
+    const cachedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    localStorage.setItem('user', JSON.stringify({ ...cachedUser, ...(payload.user || {}) }))
+    // If core fields are still empty, hydrate from profile endpoint
+    if (!(payload?.information?.first_name || payload?.information?.contact_number || payload?.information?.dob)) {
+      const profile = await api.get('/auth/profile')
+      const user = profile?.data?.data || {}
+      setFormFromData(payload.information || {}, user || {})
+      localStorage.setItem('user', JSON.stringify({ ...cachedUser, ...user }))
+    }
     status.message = ''
   } catch (error) {
     status.message = 'Could not load account information.'
     status.type = 'error'
     console.error(error)
+    hydrateFromCache()
   }
 }
 

@@ -24,7 +24,7 @@
           <input v-model="email" type="email" required placeholder="you@example.com" />
         </label>
 
-        <label class="field">
+        <label v-if="showRoleSelect" class="field">
           <span>I am a</span>
           <select v-model="role" required>
             <option value="">Select your role</option>
@@ -75,11 +75,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const name = ref('')
@@ -87,6 +88,7 @@ const email = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
 const role = ref('')
+const showRoleSelect = ref(true)
 const showPassword = ref(false)
 const showPasswordConfirm = ref(false)
 const isLoading = ref(false)
@@ -121,6 +123,19 @@ const handleRegister = async () => {
     isLoading.value = false
   }
 }
+
+onMounted(() => {
+  const param = (route.query.u || '').toString().toLowerCase()
+  if (param === 's') {
+    role.value = 'subscriber'
+    showRoleSelect.value = false
+  } else if (param === 'c') {
+    role.value = 'creator'
+    showRoleSelect.value = false
+  } else {
+    showRoleSelect.value = true
+  }
+})
 </script>
 
 <style scoped>

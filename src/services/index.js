@@ -58,7 +58,8 @@ export const contentService = {
   },
 
   create(data) {
-    return api.post('/content', data)
+    const isFormData = data instanceof FormData
+    return api.post('/content', data, isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined)
   },
 
   get(id) {
@@ -66,7 +67,10 @@ export const contentService = {
   },
 
   update(id, data) {
-    return api.put(`/content/${id}`, data)
+    const isFormData = data instanceof FormData
+    const method = isFormData ? 'post' : 'put'
+    const url = isFormData ? `/content/${id}?_method=PUT` : `/content/${id}`
+    return api[method](url, data, isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined)
   },
 
   publish(id) {
