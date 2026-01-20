@@ -99,6 +99,11 @@
               <input v-model="subscriptionForm.name" type="text" required @input="subscriptionForm.slug = slugify(subscriptionForm.name)">
             </label>
 
+            <label class="full">
+              Subtitle
+              <input v-model="subscriptionForm.subtitle" type="text" placeholder="Great for loyal supporters">
+            </label>
+
             <label>
               Slug
               <input v-model="subscriptionForm.slug" type="text" required readonly>
@@ -128,6 +133,16 @@
             <label>
               Monthly price ($)
               <input v-model.number="subscriptionForm.monthly_price" type="number" step="0.01" min="0" required placeholder="9.99">
+            </label>
+
+            <label>
+              Quarterly price ($)
+              <input v-model.number="subscriptionForm.quarterly_price" type="number" step="0.01" min="0" placeholder="24.99">
+            </label>
+
+            <label>
+              Half-yearly price ($)
+              <input v-model.number="subscriptionForm.half_yearly_price" type="number" step="0.01" min="0" placeholder="49.99">
             </label>
 
             <label>
@@ -415,9 +430,12 @@ const plans = ref([])
 const subscriptionForm = reactive({
   id: null,
   name: '',
+  subtitle: '',
   slug: '',
   description: '',
   monthly_price: '',
+  quarterly_price: '',
+  half_yearly_price: '',
   yearly_price: '',
   features: [],
   is_active: true,
@@ -626,9 +644,12 @@ const platformName = (id) => {
 const setPlanForm = (plan = null) => {
   subscriptionForm.id = plan?.id || null
   subscriptionForm.name = plan?.name || ''
+  subscriptionForm.subtitle = plan?.subtitle || ''
   subscriptionForm.slug = plan?.slug || slugify(plan?.name || '')
   subscriptionForm.description = plan?.description || ''
   subscriptionForm.monthly_price = plan?.monthly_price ? Number(plan.monthly_price) : ''
+  subscriptionForm.quarterly_price = plan?.quarterly_price ? Number(plan.quarterly_price) : ''
+  subscriptionForm.half_yearly_price = plan?.half_yearly_price ? Number(plan.half_yearly_price) : ''
   subscriptionForm.yearly_price = plan?.yearly_price ? Number(plan.yearly_price) : ''
   subscriptionForm.features = plan?.features || []
   subscriptionForm.is_active = plan?.is_active ?? true
@@ -661,9 +682,12 @@ const savePlan = async () => {
   planLoading.value = true
   const formData = new FormData()
   formData.append('name', subscriptionForm.name)
+  formData.append('subtitle', subscriptionForm.subtitle || '')
   formData.append('slug', subscriptionForm.slug || slugify(subscriptionForm.name))
   formData.append('description', subscriptionForm.description)
   formData.append('monthly_price', subscriptionForm.monthly_price || 0)
+  formData.append('quarterly_price', subscriptionForm.quarterly_price || 0)
+  formData.append('half_yearly_price', subscriptionForm.half_yearly_price || 0)
   formData.append('yearly_price', subscriptionForm.yearly_price || 0)
   formData.append('plan_order', subscriptionForm.plan_order ?? 0)
   formData.append('is_active', subscriptionForm.is_active ? 1 : 0)

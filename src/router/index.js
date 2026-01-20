@@ -131,6 +131,18 @@ const routes = [
     props: true,
   },
   {
+    path: '/profile/:username',
+    name: 'PublicProfile',
+    component: () => import('../views/profile/PublicProfile.vue'),
+    props: true,
+  },
+  {
+    path: '/profile/:username/subscription-plans',
+    name: 'PublicSubscriptionPlans',
+    component: () => import('../views/profile/SubscriptionPlans.vue'),
+    props: true,
+  },
+  {
     path: '/subscriptions',
     name: 'Subscriptions',
     component: () => import('../views/subscriptions/SubscriptionList.vue'),

@@ -57,15 +57,22 @@
               @change="onLogoChange"
             />
             <div class="text-xs text-gray-300" v-if="form.logoFile">{{ form.logoFile.name }}</div>
-            <div class="text-xs text-gray-400" v-else-if="form.logo">Current: {{ form.logo }}</div>
             <div v-if="form.logoPreview" class="logo-preview">
               <img :src="form.logoPreview" alt="Logo preview" />
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <Checkbox v-model="form.status" :binary="true" inputId="status" />
-          <label for="status">Active</label>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="toggle-btn"
+            :class="{ active: form.status }"
+            @click="form.status = !form.status"
+            :aria-pressed="form.status"
+          >
+            <span class="dot"></span>
+          </button>
+          <span class="text-sm">{{ form.status ? 'Active' : 'Inactive' }}</span>
         </div>
       </div>
       <template #footer>
@@ -147,6 +154,7 @@ const openEdit = (row) => {
     ...row,
     logoFile: null,
     logoPreview: row.logo ? resolveMedia(row.logo) : '',
+    status: !!row.status,
   }
   dialogVisible.value = true
 }
@@ -264,6 +272,37 @@ onMounted(() => {
 .p-dialog .p-button:not(.p-button-text):hover {
   background: #1f2937;
   border-color: #1f2937;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid #1f2a3a;
+  background: #0b1220;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn .dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #9ca3af;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: #22c55e;
+}
+
+.toggle-btn.active .dot {
+  transform: translateX(20px);
+  background: #fff;
 }
 .dialog-form .field {
   display: flex;

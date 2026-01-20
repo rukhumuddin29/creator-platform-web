@@ -17,15 +17,36 @@
 
       <form class="form-grid" @submit.prevent="saveDraft">
         <div class="triple-row full">
+          <div class="access-row">
+            <div class="toggle-label">
+              Access Type
+              <small class="muted block-label">Choose how viewers unlock this post.</small>
+            </div>
+            <button
+              type="button"
+              class="toggle-btn access-toggle"
+              :class="{ active: form.is_ppv }"
+              @click="setAccessType(!form.is_ppv)"
+              :aria-pressed="form.is_ppv"
+            >
+              <span class="dot"></span>
+            </button>
+            <div class="access-copy">
+              <span :class="{ active: !form.is_ppv }">Subscription Plan</span>
+              <span class="divider">/</span>
+              <span :class="{ active: form.is_ppv }">PPV (pay-per-view)</span>
+            </div>
+          </div>
+
           <label>
-          Subscription Plan
-          <select v-model="form.subscription_tier" required>
-            <option value="" disabled>Select a plan</option>
-            <option v-for="plan in plans" :key="plan.id" :value="plan.slug">
-              {{ plan.name }}
-            </option>
-          </select>
-        </label>
+            Subscription Plan
+            <select v-model="form.subscription_tier" :disabled="form.is_ppv" :required="!form.is_ppv">
+              <option value="" disabled>Select a plan</option>
+              <option v-for="plan in plans" :key="plan.id" :value="plan.slug">
+                {{ plan.name }}
+              </option>
+            </select>
+          </label>
 
           <label>
             Post Title
@@ -70,6 +91,21 @@
           Description
           <textarea v-model="form.description" rows="6" placeholder="Write your post..."></textarea>
         </label>
+
+        <div class="triple-row full" v-if="form.is_ppv">
+          <label>
+            PPV Price
+            <input v-model.number="form.ppv_price" type="number" step="0.01" min="0" placeholder="4.99" required>
+          </label>
+          <label>
+            Currency
+            <input v-model="form.ppv_currency" type="text" maxlength="10" placeholder="USD">
+          </label>
+          <label>
+            Expires in days (optional)
+            <input v-model.number="form.ppv_expires_in_days" type="number" min="1" placeholder="e.g. 30">
+          </label>
+        </div>
 
         <div class="toggle-row duo">
           <span class="toggle-label">Featured</span>
@@ -147,6 +183,10 @@ const form = reactive({
   thumbnail_preview: '',
   is_featured: false,
   is_published: false,
+  is_ppv: false,
+  ppv_price: '',
+  ppv_currency: 'USD',
+  ppv_expires_in_days: '',
 })
 
 const noop = () => {}
@@ -193,6 +233,10 @@ const loadPost = async () => {
     const { data } = await contentService.get(route.params.id)
     const post = data?.data || data
     form.subscription_tier = post.subscription_tier || ''
+    form.is_ppv = !!post.is_ppv
+    form.ppv_price = post.ppv_price || ''
+    form.ppv_currency = post.ppv_currency || 'USD'
+    form.ppv_expires_in_days = post.ppv_expires_in_days || ''
     form.title = post.title || ''
     form.slug = post.slug || ''
     form.description = post.description || ''
@@ -215,14 +259,27 @@ const loadPost = async () => {
 }
 
 const saveDraft = async () => {
-  if (!form.subscription_tier || !form.title || (!isEdit.value && !form.post_image_file)) {
+  if ((!form.is_ppv && !form.subscription_tier) || !form.title || (!isEdit.value && !form.post_image_file)) {
     status.message = 'Please fill required fields and add a post image.'
+    status.type = 'error'
+    return
+  }
+  if (form.is_ppv && !form.ppv_price) {
+    status.message = 'Please set a PPV price.'
     status.type = 'error'
     return
   }
 
   const payload = new FormData()
-  payload.append('subscription_tier', form.subscription_tier)
+  payload.append('subscription_tier', form.is_ppv ? '' : form.subscription_tier)
+  payload.append('is_ppv', form.is_ppv ? '1' : '0')
+  if (form.is_ppv) {
+    payload.append('ppv_price', form.ppv_price || 0)
+    payload.append('ppv_currency', form.ppv_currency || 'USD')
+    if (form.ppv_expires_in_days) {
+      payload.append('ppv_expires_in_days', form.ppv_expires_in_days)
+    }
+  }
   payload.append('title', form.title)
   payload.append('slug', form.slug)
   payload.append('description', form.description || '')
@@ -272,6 +329,13 @@ const onThumbImageChange = (event) => {
   const file = event.target.files?.[0]
   form.thumbnail_file = file || null
   form.thumbnail_preview = file ? URL.createObjectURL(file) : ''
+}
+
+const setAccessType = (ppv) => {
+  form.is_ppv = ppv
+  if (ppv) {
+    form.subscription_tier = ''
+  }
 }
 
 const goToCreate = () => {
@@ -458,6 +522,43 @@ select:focus {
 .toggle-row.duo {
   grid-template-columns: 1fr;
   column-gap: 16px;
+  margin-top: 4px;
+}
+
+.access-row {
+  display: grid;
+  grid-template-columns: auto 60px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px dashed #f0d8cb;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #fff7f2, #fffaf7);
+}
+
+.access-toggle {
+  margin: 0 auto;
+}
+
+.access-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #8a6a5c;
+}
+
+.access-copy .divider {
+  opacity: 0.6;
+}
+
+.access-copy .active {
+  color: #4b332b;
+}
+
+.block-label {
+  display: block;
   margin-top: 4px;
 }
 
