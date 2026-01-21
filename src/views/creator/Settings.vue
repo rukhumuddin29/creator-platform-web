@@ -156,6 +156,12 @@
               <small class="muted">Lower numbers show first.</small>
             </label>
 
+            <label>
+              Tier level
+              <input v-model.number="subscriptionForm.tier_level" type="number" min="1" placeholder="1">
+              <small class="muted">Higher tier unlocks lower tiers.</small>
+            </label>
+
             <label class="full">
               Features (one per line)
               <textarea
@@ -439,6 +445,7 @@ const subscriptionForm = reactive({
   yearly_price: '',
   features: [],
   is_active: true,
+   tier_level: 1,
   plan_order: 0,
   plan_thumbnail_file: null,
   badge_thumbnail_file: null,
@@ -653,6 +660,7 @@ const setPlanForm = (plan = null) => {
   subscriptionForm.yearly_price = plan?.yearly_price ? Number(plan.yearly_price) : ''
   subscriptionForm.features = plan?.features || []
   subscriptionForm.is_active = plan?.is_active ?? true
+  subscriptionForm.tier_level = plan?.tier_level ? Number(plan.tier_level) : 1
   subscriptionForm.plan_order = plan?.plan_order ?? 0
   subscriptionForm.plan_thumbnail_file = null
   subscriptionForm.badge_thumbnail_file = null
@@ -690,6 +698,7 @@ const savePlan = async () => {
   formData.append('half_yearly_price', subscriptionForm.half_yearly_price || 0)
   formData.append('yearly_price', subscriptionForm.yearly_price || 0)
   formData.append('plan_order', subscriptionForm.plan_order ?? 0)
+  formData.append('tier_level', subscriptionForm.tier_level || 1)
   formData.append('is_active', subscriptionForm.is_active ? 1 : 0)
   featuresText.value.split('\n').map(f => f.trim()).filter(Boolean).forEach(f => formData.append('features[]', f))
   if (subscriptionForm.plan_thumbnail_file) {

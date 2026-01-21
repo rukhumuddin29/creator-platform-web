@@ -72,7 +72,12 @@
 
           <label>
             Post Image
-            <input type="file" accept="image/*" @change="onPostImageChange" required>
+            <input
+              type="file"
+              accept="image/*"
+              @change="onPostImageChange"
+              :required="!isEdit.value && !form.post_image_preview"
+            >
             <div class="avatar-preview" v-if="form.post_image_preview">
               <img :src="form.post_image_preview" alt="Post image preview">
             </div>
@@ -148,7 +153,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CreatorHeader from '../../components/creator/CreatorHeader.vue'
 import CreatorNav from '../../components/creator/CreatorNav.vue'
@@ -187,6 +192,7 @@ const form = reactive({
   ppv_price: '',
   ppv_currency: 'USD',
   ppv_expires_in_days: '',
+  required_tier: 1,
 })
 
 const noop = () => {}
@@ -195,6 +201,10 @@ const loadPlans = async () => {
   try {
     const { data } = await subscriptionService.getAll(1, 50)
     plans.value = data?.data || data?.data?.data || []
+    if (!isEdit.value && !form.subscription_tier && plans.value.length) {
+      form.subscription_tier = plans.value[0].slug
+    }
+    updateRequiredTier()
   } catch (e) {
     status.message = 'Could not load your plans.'
     status.type = 'error'
@@ -237,6 +247,7 @@ const loadPost = async () => {
     form.ppv_price = post.ppv_price || ''
     form.ppv_currency = post.ppv_currency || 'USD'
     form.ppv_expires_in_days = post.ppv_expires_in_days || ''
+    form.required_tier = post.required_tier || 1
     form.title = post.title || ''
     form.slug = post.slug || ''
     form.description = post.description || ''
@@ -252,6 +263,7 @@ const loadPost = async () => {
       : ''
     form.post_image_file = null
     form.thumbnail_file = null
+    updateRequiredTier()
   } catch (e) {
     status.message = 'Unable to load post.'
     status.type = 'error'
@@ -259,8 +271,8 @@ const loadPost = async () => {
 }
 
 const saveDraft = async () => {
-  if ((!form.is_ppv && !form.subscription_tier) || !form.title || (!isEdit.value && !form.post_image_file)) {
-    status.message = 'Please fill required fields and add a post image.'
+  if ((!form.is_ppv && !form.subscription_tier) || !form.title) {
+    status.message = 'Please fill required fields.'
     status.type = 'error'
     return
   }
@@ -286,9 +298,19 @@ const saveDraft = async () => {
   payload.append('content_type', form.content_type)
   payload.append('is_featured', form.is_featured ? '1' : '0')
   payload.append('is_published', form.is_published ? '1' : '0')
+  payload.append('required_tier', form.required_tier || 1)
 
-  if (form.post_image_file) payload.append('post_image', form.post_image_file)
-  if (form.thumbnail_file) payload.append('thumbnail_image', form.thumbnail_file)
+  if (form.post_image_file) {
+    payload.append('post_image', form.post_image_file)
+  } else if (isEdit.value && form.post_image_preview) {
+    payload.append('media_url', form.post_image_preview.replace(new URL(api.defaults.baseURL).origin, ''))
+  }
+
+  if (form.thumbnail_file) {
+    payload.append('thumbnail_image', form.thumbnail_file)
+  } else if (isEdit.value && form.thumbnail_preview) {
+    payload.append('thumbnail_url', form.thumbnail_preview.replace(new URL(api.defaults.baseURL).origin, ''))
+  }
 
   status.message = ''
   loading.value = true
@@ -335,8 +357,17 @@ const setAccessType = (ppv) => {
   form.is_ppv = ppv
   if (ppv) {
     form.subscription_tier = ''
+    form.required_tier = 1
   }
 }
+
+const updateRequiredTier = () => {
+  const selected = plans.value.find(p => p.slug === form.subscription_tier)
+  if (!selected) return
+  form.required_tier = selected.tier_level ? Number(selected.tier_level) : 1
+}
+
+watch(() => form.subscription_tier, updateRequiredTier)
 
 const goToCreate = () => {
   router.push(`/creator/${username.value}/create-post`)

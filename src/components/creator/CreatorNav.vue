@@ -34,7 +34,7 @@ const defaultItems = computed(() => ([
   { label: 'Home', to: `/creator/${slug.value}` },
   { label: 'My Posts', to: `/creator/${slug.value}/my-posts` },
   { label: 'Products', to: '#' },
-  { label: 'Subscribers', to: '#' },
+  { label: 'Subscribers', to: `/creator/${slug.value}/subscribers` },
   { label: 'My Settings', to: `/creator/${slug.value}/settings` },
 ]))
 
@@ -46,7 +46,7 @@ const computedItems = computed(() => {
   }))
 })
 
-const isActive = (item) => route.path === item.to
+const isActive = (item) => route.path.startsWith(item.to)
 </script>
 
 <style scoped>

@@ -103,6 +103,13 @@ const routes = [
     meta: { requiresAuth: true, requiresCreator: true },
   },
   {
+    path: '/creator/:username/subscribers',
+    name: 'CreatorSubscribers',
+    component: () => import('../views/creator/Subscribers.vue'),
+    props: true,
+    meta: { requiresAuth: true, requiresCreator: true },
+  },
+  {
     path: '/subscriber/:username',
     name: 'SubscriberDashboard',
     component: () => import('../views/subscriber/Dashboard.vue'),
@@ -129,6 +136,13 @@ const routes = [
     component: () => import('../views/subscriber/Following.vue'),
     meta: { requiresAuth: true, requiresSubscriber: true },
     props: true,
+  },
+  {
+    path: '/checkout/:username/:slug',
+    name: 'Checkout',
+    component: () => import('../views/checkout/Cart.vue'),
+    props: true,
+    meta: { requiresAuth: true },
   },
   {
     path: '/profile/:username',

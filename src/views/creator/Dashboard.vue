@@ -3,30 +3,75 @@
 <CreatorHeader :name="displayName" :avatar="headerAvatar" @add="handleAddPost" />
     <CreatorNav :username="username" />
 
-    <section class="stats">
-      <div class="stat-card empty"></div>
+    <section class="stats-grid">
+      <div class="stat-card chart-card">
+        <div class="chart-header">
+          <div>
+            <p class="chart-title">Revenue Analytics</p>
+            <p class="chart-sub">${{ totalRevenue.toLocaleString() }} <span class="muted">total revenue ($)</span></p>
+          </div>
+          <span class="chip">Last 6 months</span>
+        </div>
+        <svg viewBox="0 0 300 120" class="chart">
+          <polyline
+            :points="chartPoints"
+            fill="none"
+            stroke="#b77c73"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <circle v-for="(p, idx) in parsedChartPoints" :key="idx" :cx="p.x" :cy="p.y" r="3" fill="#b77c73" />
+        </svg>
+        <div class="chart-foot">
+          <span v-for="label in chartLabels" :key="label" class="chart-label">{{ label }}</span>
+        </div>
+      </div>
+
       <div class="stat-card main">
         <div class="stat-row" v-for="stat in statEntries" :key="stat.label">
           <span class="stat-label">{{ stat.label.toUpperCase() }}</span>
           <span class="stat-value" :class="{ pulse: animate }">{{ stat.value }}</span>
         </div>
       </div>
-      <div class="stat-card empty"></div>
+
+      <div class="stat-card subs-card">
+        <div class="subs-header">
+          <span class="chart-title">Recent Subscribers</span>
+          <div class="subs-controls" v-if="recentSubscribers.length > subsPageSize">
+            <button class="pill-btn" @click="prevSubs" :disabled="subsPage === 1">‹</button>
+            <button class="pill-btn" @click="nextSubs" :disabled="subsPage * subsPageSize >= recentSubscribers.length">›</button>
+          </div>
+          <span class="muted" v-else>Last 5</span>
+        </div>
+        <div v-if="recentSubscribers.length" class="subs-list">
+          <div class="subs-item" v-for="sub in visibleSubscribers" :key="sub.id">
+            <img class="avatar tiny" :src="resolveSrc(sub.avatar_url)" alt="" />
+            <div class="subs-meta">
+              <span class="subs-name">{{ sub.name || sub.username || 'Subscriber' }}</span>
+              <span class="subs-plan">{{ sub.plan || 'Plan' }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="muted small">No subscribers yet.</div>
+      </div>
     </section>
 
     <section class="content">
-      <h2 class="section-title">Featured posts</h2>
+      <h2 class="section-title">My Featured Posts</h2>
       <div class="cards">
-        <article class="card" v-for="post in posts" :key="post.title">
-          <span class="badge">{{ post.category }}</span>
-          <img :src="post.image" :alt="post.title">
+        <article class="card" v-for="post in featuredPosts" :key="post.id">
+          <span class="badge">{{ formatPlan(post.subscription_tier) }}</span>
+          <img :src="resolveSrc(post.thumbnail_url) || resolveSrc(post.media_url)" :alt="post.title" loading="lazy">
           <div class="card-footer">
             <div class="author">
-              <img class="avatar small" src="https://images.unsplash.com/photo-1506084868230-bb9d95c24759?auto=format&fit=crop&w=60&q=80" alt="">
-              <span>{{ displayName }}, {{ post.date }}</span>
+              <span class="title">{{ post.title }}</span>
             </div>
           </div>
         </article>
+      </div>
+      <div class="load-more" v-if="hasMore">
+        <button class="load-btn" @click="loadFeatured(true)">Load More</button>
       </div>
     </section>
   </div>
@@ -37,8 +82,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CreatorHeader from '../../components/creator/CreatorHeader.vue'
 import CreatorNav from '../../components/creator/CreatorNav.vue'
-import { contentService } from '../../services'
-import api from '../../services/api'
+import { contentService, creatorSubscriberService } from '../../services'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,27 +96,6 @@ const headerAvatar = computed(() => {
     return ''
   }
 })
-
-const posts = [
-  {
-    title: 'Lifestyle',
-    category: 'Lifestyle',
-    image: 'https://images.unsplash.com/photo-1504198453319-5ce911bafcde?auto=format&fit=crop&w=800&q=80',
-    date: 'September 16, 2022',
-  },
-  {
-    title: 'Travel',
-    category: 'Travel',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
-    date: 'September 15, 2022',
-  },
-  {
-    title: 'Knitting',
-    category: 'Knitting',
-    image: 'https://images.unsplash.com/photo-1504198458649-3128b932f49b?auto=format&fit=crop&w=800&q=80',
-    date: 'September 14, 2022',
-  },
-]
 
 const handleAddPost = () => {
   router.push({ name: 'CreatorCreatePost', params: { username: username.value } })
@@ -90,12 +113,91 @@ const internalState = ref({
   follows: 0,
 })
 
+const allFeatured = ref([])
+const featuredPosts = ref([])
+const page = ref(1)
+const chunkSize = 8
+const hasMore = ref(false)
+const recentSubscribers = ref([])
+const totalRevenue = ref(0)
+const chartData = ref([0, 0, 0, 0, 0, 0])
+const chartLabels = ref(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'])
+const subsPage = ref(1)
+const subsPageSize = 2
+
+const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
+const resolveSrc = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return backendBase ? `${backendBase}${path.startsWith('/') ? '' : '/'}${path}` : path
+}
+
 const animate = ref(false)
+
+const formatPlan = (plan) => {
+  if (!plan || plan === 'free') return 'Free'
+  return plan.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const loadFeatured = async (loadNext = false) => {
+  try {
+    if (!allFeatured.value.length) {
+      const { data } = await contentService.getAll(1, 200)
+      const items = Array.isArray(data?.data) ? data.data : []
+      allFeatured.value = items.filter((item) => item.is_featured)
+    }
+
+    page.value = loadNext ? page.value + 1 : 1
+    const end = page.value * chunkSize
+    featuredPosts.value = allFeatured.value.slice(0, end)
+    hasMore.value = allFeatured.value.length > end
+  } catch (error) {
+    console.error('Failed to load featured posts', error)
+    featuredPosts.value = []
+    hasMore.value = false
+  }
+}
+
+const buildRevenueSeries = (items = []) => {
+  const now = new Date()
+  const months = []
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleString('default', { month: 'short' }), total: 0 })
+  }
+
+  const getAmount = (item) =>
+    Number(
+      item.amount ??
+      item.price ??
+      item.subscription_price ??
+      item.plan_price ??
+      item.total ??
+      0
+    )
+
+  let grand = 0
+  items.forEach((item) => {
+    const rawDate = item.subscribed_at || item.created_at || item.updated_at
+    const dt = rawDate ? new Date(rawDate) : null
+    const key = dt ? `${dt.getFullYear()}-${dt.getMonth()}` : null
+    const amt = getAmount(item)
+    grand += amt
+    if (!key) return
+    const bucket = months.find((m) => m.key === key)
+    if (bucket) bucket.total += amt
+  })
+
+  totalRevenue.value = grand
+  chartData.value = months.map((m) => m.total)
+  chartLabels.value = months.map((m) => m.label)
+}
 
 const loadStats = async () => {
   try {
     // posts total from pagination meta
     const { data } = await contentService.getAll(1, 1)
+    
     const total =
       data?.pagination?.total ||
       data?.data?.pagination?.total ||
@@ -111,10 +213,31 @@ const loadStats = async () => {
   }
 
   try {
-    const { data } = await api.get('/auth/profile')
-    const profile = data?.data || data
-    internalState.value.subscribers = profile?.subscriber_count ?? 0
-  } catch {
+    const response = await creatorSubscriberService.getAll(1, 50)
+    const body = response?.data || {}
+    const items = Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : []
+    recentSubscribers.value = items.slice(0, 5).map((item) => ({
+      id: item.id,
+      name: item.name,
+      username: item.username,
+      avatar_url: item.avatar_url,
+      plan: item.subscription_plan || item.plan || item.subscription_name || 'Subscription',
+    }))
+    buildRevenueSeries(items)
+    const total =
+      body?.pagination?.total ??
+      body?.data?.pagination?.total ??
+      body?.meta?.total ??
+      body?.data?.meta?.total ??
+      body?.total ??
+      body?.data?.total ??
+      (Array.isArray(body?.data?.data) ? body.data.data.length : 0) ??
+      (Array.isArray(body?.data) ? body.data.length : 0) ??
+      (Array.isArray(body) ? body.length : 0) ??
+      0
+    internalState.value.subscribers = total
+  } catch (error) {
+    console.error('creatorSubscriberService error', error)
     internalState.value.subscribers = 0
   }
 
@@ -125,7 +248,33 @@ const loadStats = async () => {
 
 onMounted(() => {
   loadStats()
+  loadFeatured()
 })
+
+const parsedChartPoints = computed(() => {
+  const maxVal = Math.max(...chartData.value, 1)
+  const stepX = 300 / (chartData.value.length - 1 || 1)
+  return chartData.value.map((val, idx) => ({
+    x: idx * stepX,
+    y: 120 - (val / maxVal) * 100,
+  }))
+})
+
+const chartPoints = computed(() => parsedChartPoints.value.map((p) => `${p.x},${p.y}`).join(' '))
+
+const visibleSubscribers = computed(() => {
+  const start = (subsPage.value - 1) * subsPageSize
+  return recentSubscribers.value.slice(start, start + subsPageSize)
+})
+
+const nextSubs = () => {
+  const maxPage = Math.ceil(recentSubscribers.value.length / subsPageSize)
+  if (subsPage.value < maxPage) subsPage.value += 1
+}
+
+const prevSubs = () => {
+  if (subsPage.value > 1) subsPage.value -= 1
+}
 </script>
 
 <style scoped>
@@ -213,15 +362,9 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.section-title {
-  text-align: center;
-  margin: 24px 0 16px;
-  font-size: 26px;
-}
-
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
 }
 
@@ -235,7 +378,7 @@ onMounted(() => {
 
 .card img {
   width: 100%;
-  height: 260px;
+  height: 220px;
   object-fit: cover;
 }
 
@@ -254,6 +397,8 @@ onMounted(() => {
 
 .card-footer {
   padding: 12px 14px;
+  display: flex;
+  justify-content: center;
 }
 
 .author {
@@ -264,11 +409,40 @@ onMounted(() => {
   color: #6d4f43;
 }
 
+.title {
+  font-weight: 700;
+  color: #5a4035;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.load-btn {
+  background: #f5a7a8;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(180px, 1fr));
   gap: 12px;
   margin: 12px 0 4px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 12px 0 20px;
 }
 
 .stat-card {
@@ -314,5 +488,123 @@ onMounted(() => {
 .stat-value.pulse {
   transform: translateY(-2px) scale(1.02);
   opacity: 0.9;
+}
+
+.chart-card {
+  grid-column: span 1;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.chart-title {
+  margin: 0;
+  font-weight: 800;
+  color: #5a4035;
+}
+
+.chart-sub {
+  margin: 0;
+  color: #8a6457;
+  font-weight: 700;
+}
+
+.chip {
+  background: #f5e3db;
+  color: #6d4f43;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.chart {
+  width: 100%;
+  height: 140px;
+}
+
+.chart-foot {
+  display: flex;
+  justify-content: space-between;
+  color: #8a6457;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.subs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subs-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.pill-btn {
+  border: 1px solid #f1d8cb;
+  background: #fff7f2;
+  color: #5a4035;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pill-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.subs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #f1d8cb;
+  border-radius: 10px;
+}
+
+.subs-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.subs-name {
+  font-weight: 700;
+  color: #5a4035;
+}
+
+.subs-plan {
+  font-size: 12px;
+  color: #8a6457;
+}
+
+.muted {
+  color: #9b7a70;
+}
+
+.muted.small {
+  font-size: 12px;
 }
 </style>

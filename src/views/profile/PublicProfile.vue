@@ -125,13 +125,12 @@
                 </select>
               </label>
 
-              <button class="primary w-full">Subscribe Now</button>
-            </div>
-
-            <div class="see-all">
-              <a :href="`/profile/${route.params.username}/subscription-plans`" class="link">See all plans</a>
+              <button class="primary w-full" @click="goToCheckout(plan)">Subscribe Now</button>
             </div>
           </template>
+        </div>
+        <div class="see-all">
+          <a :href="`/profile/${route.params.username}/subscription-plans`" class="link">SEE ALL PLANS</a>
         </div>
       </div>
     </div>
@@ -140,10 +139,11 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api, { API_BASE_URL } from '../../services/api'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const isMobile = ref(false)
 const profile = reactive({
@@ -201,7 +201,7 @@ const fetchContent = async (username) => {
     featuredPosts.value = list.map((item) => ({
       title: item.title,
       image: resolveMedia(item.thumbnail_url || item.media_url),
-      locked: (item.subscription_tier && item.subscription_tier !== 'free') || item.is_ppv,
+      locked: item.locked ?? false,
     }))
   } catch (e) {
     console.error('Failed to load content', e)
@@ -283,6 +283,11 @@ const formatPrice = (val) => {
   if (val === null || val === undefined || val === '') return 'N/A'
   const num = Number(val)
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const goToCheckout = (plan) => {
+  closePlanModal()
+  router.push(`/checkout/${route.params.username}/${plan.slug}`)
 }
 
 onMounted(() => {
@@ -613,7 +618,7 @@ onUnmounted(() => {
 .plan-card h5 {
   margin: 0;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -666,6 +671,7 @@ onUnmounted(() => {
   border: 1px solid #f1d8cb;
   border-radius: 10px;
   padding: 8px 10px;
+  margin-bottom: 5px;
 }
 
 .primary.w-full {
@@ -677,6 +683,23 @@ onUnmounted(() => {
   border-radius: 12px;
   cursor: pointer;
   font-weight: 800;
+}
+
+.plan-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.plan-list .status {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .plan-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .see-all {

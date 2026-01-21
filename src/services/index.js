@@ -48,6 +48,10 @@ export const subscriptionService = {
   delete(id) {
     return api.delete(`/subscriptions/${id}`)
   },
+
+  getMine() {
+    return api.get('/my-subscriptions')
+  },
 }
 
 export const contentService = {
@@ -79,5 +83,35 @@ export const contentService = {
 
   delete(id) {
     return api.delete(`/content/${id}`)
+  },
+}
+
+export const billingService = {
+  get() {
+    return api.get('/billing-details')
+  },
+  save(data) {
+    return api.post('/billing-details', data)
+  },
+}
+
+export const checkoutService = {
+  createIntent(subscriptionSlug, billingPeriod) {
+    return api.post('/checkout/intent', {
+      subscription_slug: subscriptionSlug,
+      billing_period: billingPeriod,
+    })
+  },
+  getPublicPlan(slug) {
+    return api.get(`/public/subscription/${slug}`)
+  },
+  complete(paymentId, paymentIntentId = '') {
+    return api.post('/checkout/complete', { payment_id: paymentId, payment_intent: paymentIntentId })
+  },
+}
+
+export const creatorSubscriberService = {
+  getAll(page = 1, perPage = 24) {
+    return api.get('/creator-subscribers', { params: { page, per_page: perPage } })
   },
 }
