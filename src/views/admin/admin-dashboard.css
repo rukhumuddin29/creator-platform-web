@@ -7,6 +7,23 @@
   gap: 20px;
 }
 
+.main-hero-area{
+  display: grid;
+  gap: 10px;
+}
+
+.hero-pill{
+  padding: 5px 10px;
+}
+
+.mb-2{
+  margin-bottom: 12px;
+}
+
+.table-avatar{
+  padding: 5px;
+}
+
 .card {
   background: #0f1625;
   border: 1px solid rgba(255, 255, 255, 0.06);

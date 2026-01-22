@@ -63,6 +63,7 @@ const sections = [
     items: [
       { icon: 'pi-th-large', label: 'Dashboard', to: '/admin/dashboard' },
       { icon: 'pi-users', label: 'Users', to: '/admin/users' },
+      { icon: 'pi-id-card', label: 'Subscriptions', to: '/admin/subscriptions' },
       { icon: 'pi-key', label: 'Roles & Permissions', to: '/admin/roles-permissions' },
       { icon: 'pi-star', label: 'Creator Roles', to: '/admin/creator-roles' },
       { icon: 'pi-at', label: 'Social Media Platforms', to: '/admin/social-platforms' },

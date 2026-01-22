@@ -12,25 +12,25 @@
               <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center border border-white/10 shadow-inner shadow-black/30">
                 <i class="pi pi-user text-2xl text-white"></i>
               </div>
-              <div class="space-y-2">
+              <div class="space-y-2 main-hero-area">
                 <p class="text-sm text-gray-300">
-                  Katalyst Workspace
+                  Creator Hub Workspace
                   <Tag value="Dev" severity="warning" class="ml-2" />
                 </p>
                 <h2 class="text-3xl font-semibold">Welcome back, Admin!</h2>
                 <div class="flex items-center gap-3 text-sm text-gray-200">
-                  <span class="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full">
+                  <span class="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full hero-pill">
                     <i class="pi pi-users text-blue-200"></i>
-                    <span>156 Creators</span>
+                    <span>{{ heroCounts.creators }} Creators</span>
                   </span>
-                  <span class="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full">
+                  <span class="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full hero-pill">
                     <i class="pi pi-sitemap text-purple-200"></i>
-                    <span>12 Subscribers</span>
+                    <span>{{ heroCounts.subscribers }} Subscribers</span>
                   </span>
                 </div>
               </div>
             </div>
-            <Button label="Retake tour" icon="pi pi-refresh" class="p-button-outlined p-button-sm" />
+            <Button label="Refresh" icon="pi pi-refresh" class="p-button-outlined p-button-sm" />
           </div>
         </section>
 
@@ -61,61 +61,55 @@
 
         <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div class="bg-[#0f1625] sec-padding border border-white/5 rounded-2xl p-5 space-y-4 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">Getting Started</h3>
-              <span class="text-sm text-gray-400">2 of 5 completed</span>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-lg font-semibold">Recent Creators</h3>
+              <span class="text-sm text-gray-400">Latest 10</span>
             </div>
-            <div class="h-2 rounded-full bg-white/5 overflow-hidden">
-              <div class="h-full w-2/5 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-            </div>
-            <div class="space-y-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <i class="pi pi-users text-blue-300"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-semibold">Invite users</p>
-                  <p class="text-xs text-gray-400">Add team members to your workspace</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <i class="pi pi-cog text-emerald-300"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-semibold">Configure settings</p>
-                  <p class="text-xs text-gray-400">Set up workspace defaults and preferences</p>
-                </div>
-              </div>
-              <Button label="Go to" class="p-button-outlined p-button-sm" />
-            </div>
+            <table class="w-full text-sm text-gray-200 table-auto">
+              <thead class="text-gray-400 text-xs uppercase tracking-wide">
+                <tr class="border-b border-white/5">
+                  <th class="py-2 text-left">Name</th>
+                  <th class="py-2 text-left">Email</th>
+                  <th class="py-2 text-left">No. Posts</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="creator in recentCreators" :key="creator.id" class="border-b border-white/5 last:border-b-0">
+                  <td class="py-2 flex items-center gap-3">
+                    <img :src="creator.avatar" class="w-10 h-10 rounded-full object-cover table-avatar" alt="creator" />
+                    <span class="font-semibold text-white">{{ creator.name }}</span>
+                  </td>
+                  <td class="py-2 text-gray-300">{{ creator.email }}</td>
+                  <td class="py-2 text-gray-300">{{ creator.posts ?? 0 }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div class="bg-[#0f1625] sec-padding border border-white/5 rounded-2xl p-5 space-y-4 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-            <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold">Recent Activity</h3>
-              <Button label="View all" icon="pi pi-angle-right" iconPos="right" class="p-button-text p-button-sm text-gray-300" />
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-lg font-semibold">Recent Subscribers</h3>
+              <span class="text-sm text-gray-400">Latest 10</span>
             </div>
-            <div class="space-y-4">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <i class="pi pi-user-plus text-indigo-300"></i>
-                </div>
-                <div class="flex-1">
-                  <p class="text-sm"><span class="font-semibold">Sarah Miller</span> invited <span class="font-semibold">Alex Johnson</span></p>
-                  <p class="text-xs text-gray-400">15m ago</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-                  <i class="pi pi-bolt text-emerald-300"></i>
-                </div>
-                <div class="flex-1">
-                  <p class="text-sm"><span class="font-semibold">System</span> health check passed</p>
-                  <p class="text-xs text-gray-400">1h ago</p>
-                </div>
-              </div>
-            </div>
+            <table class="w-full text-sm text-gray-200 table-auto">
+              <thead class="text-gray-400 text-xs uppercase tracking-wide">
+                <tr class="border-b border-white/5">
+                  <th class="py-2 text-left">Name</th>
+                  <th class="py-2 text-left">Email</th>
+                  <th class="py-2 text-left">Subscriptions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sub in recentSubscribers" :key="sub.id" class="border-b border-white/5 last:border-b-0">
+                  <td class="py-2 flex items-center gap-3">
+                    <img :src="sub.avatar" class="w-10 h-10 rounded-full object-cover table-avatar" alt="subscriber" />
+                    <span class="font-semibold text-white">{{ sub.name }}</span>
+                  </td>
+                  <td class="py-2 text-gray-300">{{ sub.email }}</td>
+                  <td class="py-2 text-gray-300">{{ sub.subscriptions ?? 0 }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
       </main>
@@ -124,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import AdminSidebar from '../../components/admin/AdminSidebar.vue'
@@ -132,16 +126,21 @@ import AdminHeader from '../../components/admin/AdminHeader.vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import './admin-dashboard.css'
+import api from '../../services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const isSidebarCollapsed = ref(false)
-const stats = [
-  { icon: 'pi-users', title: 'Total Users', value: '156', trend: '+12', iconBg: 'bg-blue-900/40 text-blue-200' },
-  { icon: 'pi-user-plus', title: 'Active Users', value: '142', trend: '+8', iconBg: 'bg-emerald-900/40 text-emerald-200' },
-  { icon: 'pi-envelope', title: 'Pending Invitations', value: '8', trend: '-3', iconBg: 'bg-amber-900/40 text-amber-200' },
-  { icon: 'pi-sitemap', title: 'Active Subscribers', value: '12', trend: '+2', iconBg: 'bg-indigo-900/40 text-indigo-200' },
-]
+const stats = ref([
+  { key: 'users', icon: 'pi-users', title: 'Total Users', value: '0', trend: '', iconBg: 'bg-blue-900/40 text-blue-200' },
+  { key: 'posts', icon: 'pi-file', title: 'Total Posts', value: '0', trend: '', iconBg: 'bg-emerald-900/40 text-emerald-200' },
+  { key: 'revenue', icon: 'pi-dollar', title: 'Total Revenue', value: '0', trend: '', iconBg: 'bg-amber-900/40 text-amber-200' },
+  { key: 'active_subscribers', icon: 'pi-sitemap', title: 'Active Subscribers', value: '0', trend: '', iconBg: 'bg-indigo-900/40 text-indigo-200' },
+])
+
+const heroCounts = ref({ creators: 0, subscribers: 0 })
+const recentCreators = ref([])
+const recentSubscribers = ref([])
 
 const handleLogout = async () => {
   await authStore.logout()
@@ -156,4 +155,58 @@ const handleNotify = () => {
 const handleProfile = () => {
   router.push('/admin/dashboard')
 }
+
+const formatTrend = (delta) => {
+  if (!delta) return ''
+  const sign = delta > 0 ? '+' : ''
+  return `${sign}${delta}`
+}
+
+const loadStats = async () => {
+  try {
+    const { data } = await api.get('/admin/dashboard/stats')
+    const payload = data?.data || {}
+
+    heroCounts.value = {
+      creators: payload.creators?.total ?? 0,
+      subscribers: payload.subscribers?.total ?? 0,
+    }
+
+    const map = {
+      users: payload.users,
+      posts: payload.posts,
+      revenue: payload.revenue,
+      active_subscribers: payload.active_subscribers,
+    }
+
+    recentCreators.value = (payload.recent_creators || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      avatar: c.avatar_url,
+    }))
+
+    recentSubscribers.value = (payload.recent_subscribers || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      avatar: s.avatar_url,
+    }))
+
+    stats.value = stats.value.map((item) => {
+      const src = map[item.key] || { total: 0, delta: 0 }
+      return {
+        ...item,
+        value: item.key === 'revenue' ? `$${Number(src.total).toFixed(2)}` : src.total ?? 0,
+        trend: formatTrend(src.delta ?? 0),
+      }
+    })
+  } catch (err) {
+    console.error('Failed to load admin stats', err)
+  }
+}
+
+onMounted(() => {
+  loadStats()
+})
 </script>

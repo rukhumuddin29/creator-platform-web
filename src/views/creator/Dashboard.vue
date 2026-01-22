@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="creator-page">
 <CreatorHeader :name="displayName" :avatar="headerAvatar" @add="handleAddPost" />
     <CreatorNav :username="username" />
@@ -39,8 +39,8 @@
         <div class="subs-header">
           <span class="chart-title">Recent Subscribers</span>
           <div class="subs-controls" v-if="recentSubscribers.length > subsPageSize">
-            <button class="pill-btn" @click="prevSubs" :disabled="subsPage === 1">‹</button>
-            <button class="pill-btn" @click="nextSubs" :disabled="subsPage * subsPageSize >= recentSubscribers.length">›</button>
+            <button class="pill-btn" @click="prevSubs" :disabled="subsPage === 1">â€¹</button>
+            <button class="pill-btn" @click="nextSubs" :disabled="subsPage * subsPageSize >= recentSubscribers.length">â€º</button>
           </div>
           <span class="muted" v-else>Last 5</span>
         </div>
@@ -58,7 +58,7 @@
     </section>
 
     <section class="content">
-      <h2 class="section-title">My Featured Posts</h2>
+      <h2 class="section-title">My Featured Subscription Posts</h2>
       <div class="cards">
         <article class="card" v-for="post in featuredPosts" :key="post.id">
           <span class="badge">{{ formatPlan(post.subscription_tier) }}</span>
@@ -72,6 +72,34 @@
       </div>
       <div class="load-more" v-if="hasMore">
         <button class="load-btn" @click="loadFeatured(true)">Load More</button>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="section-header">
+        <h2 class="section-title">PPV Featured Posts</h2>
+        <button class="load-btn ghost" @click="goToPosts" v-if="ppvHasAny">View All Posts</button>
+      </div>
+      <div v-if="ppvFeatured.length" class="ppv-grid">
+        <article class="card" v-for="post in ppvFeatured" :key="`ppv-${post.id}`">
+          <span class="badge accent">PPV</span>
+          <img :src="resolveSrc(post.thumbnail_url) || resolveSrc(post.media_url)" :alt="post.title" loading="lazy">
+          <div class="card-footer">
+            <div class="author">
+              <span class="title">{{ post.title }}</span>
+              <span class="muted small">
+                ${{ formatPrice(post.ppv_price) }} 
+              </span>
+              <span class="muted small" v-if="post.ppv_expires_in_days">
+                Added {{ formatDate(post.created_at) }} {{ expiryLabel(post) }}
+              </span>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div v-else class="muted small">No PPV featured posts yet.</div>
+      <div class="load-more" v-if="ppvHasMore">
+        <button class="load-btn" @click="loadMorePpv">Load More</button>
       </div>
     </section>
   </div>
@@ -101,6 +129,10 @@ const handleAddPost = () => {
   router.push({ name: 'CreatorCreatePost', params: { username: username.value } })
 }
 
+const goToPosts = () => {
+  router.push({ name: 'CreatorPosts', params: { username: username.value } })
+}
+
 const statEntries = computed(() => [
   { label: 'My Posts', value: internalState.value.posts },
   { label: 'Subscribers', value: internalState.value.subscribers },
@@ -114,10 +146,15 @@ const internalState = ref({
 })
 
 const allFeatured = ref([])
+const allFeaturedSubs = ref([])
 const featuredPosts = ref([])
 const page = ref(1)
 const chunkSize = 8
 const hasMore = ref(false)
+const ppvFeatured = ref([])
+const ppvPage = ref(1)
+const ppvChunk = 10
+const ppvHasMore = ref(false)
 const recentSubscribers = ref([])
 const totalRevenue = ref(0)
 const chartData = ref([0, 0, 0, 0, 0, 0])
@@ -139,24 +176,67 @@ const formatPlan = (plan) => {
   return plan.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+const formatDate = (val) => {
+  if (!val) return ''
+  return new Date(val).toLocaleDateString()
+}
+
+const expiryLabel = (post) => {
+  if (!post.ppv_expires_in_days) return ''
+  const created = post.created_at ? new Date(post.created_at) : new Date()
+  const expires = new Date(created)
+  expires.setDate(expires.getDate() + Number(post.ppv_expires_in_days))
+  const now = new Date()
+  if (now > expires) return 'Post Expired'
+  const diff = Math.ceil((expires - now) / (1000 * 60 * 60 * 24))
+  return `Expiry in ${diff} day${diff === 1 ? '' : 's'}`
+}
+
+const formatPrice = (val) => {
+  const num = Number(val || 0)
+  return num.toFixed(2)
+}
+
 const loadFeatured = async (loadNext = false) => {
   try {
     if (!allFeatured.value.length) {
       const { data } = await contentService.getAll(1, 200)
       const items = Array.isArray(data?.data) ? data.data : []
       allFeatured.value = items.filter((item) => item.is_featured)
+      allFeaturedSubs.value = allFeatured.value.filter((item) => !item.is_ppv)
     }
 
     page.value = loadNext ? page.value + 1 : 1
     const end = page.value * chunkSize
-    featuredPosts.value = allFeatured.value.slice(0, end)
-    hasMore.value = allFeatured.value.length > end
+    featuredPosts.value = allFeaturedSubs.value.slice(0, end)
+    hasMore.value = allFeaturedSubs.value.length > end
+
+    buildPpvLists()
   } catch (error) {
     console.error('Failed to load featured posts', error)
     featuredPosts.value = []
     hasMore.value = false
+    ppvFeatured.value = []
+    ppvHasMore.value = false
   }
 }
+
+const buildPpvLists = () => {
+  const ppvAll = allFeatured.value.filter((item) => item.is_ppv)
+  ppvPage.value = 1
+  ppvFeatured.value = ppvAll.slice(0, ppvChunk)
+  ppvHasMore.value = ppvAll.length > ppvChunk
+}
+
+const loadMorePpv = () => {
+  const ppvAll = allFeatured.value.filter((item) => item.is_ppv)
+  ppvPage.value += 1
+  const end = ppvPage.value * ppvChunk
+  ppvFeatured.value = ppvAll.slice(0, end)
+  ppvHasMore.value = ppvAll.length > end
+}
+
+const ppvHasAny = computed(() => ppvFeatured.value.length > 0)
 
 const buildRevenueSeries = (items = []) => {
   const now = new Date()
@@ -398,11 +478,10 @@ const prevSubs = () => {
 .card-footer {
   padding: 12px 14px;
   display: flex;
-  justify-content: center;
 }
 
 .author {
-  display: flex;
+  display: inline-grid;
   align-items: center;
   gap: 8px;
   font-size: 14px;
@@ -606,5 +685,57 @@ const prevSubs = () => {
 
 .muted.small {
   font-size: 12px;
+}
+
+.content {
+  margin-top: 28px;
+}
+
+.section-title {
+  font-size: 20px;
+  margin: 0 0 12px;
+  color: #5a3b32;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+}
+
+.cards .card {
+  position: relative;
+}
+
+.cards .card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.ppv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+}
+
+@media (min-width: 1024px) {
+  .ppv-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.badge.accent {
+  background: #ffe1e1;
+  color: #b35a52;
 }
 </style>

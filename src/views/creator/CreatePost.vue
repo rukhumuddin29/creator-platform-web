@@ -10,7 +10,17 @@
           <h3>Create New Post</h3>
           <p class="muted">Share a new post with your subscribers. Choose a plan to target.</p>
         </div>
-        <div class="pill">Draft or Publish</div>
+        <div class="pill-actions">
+          <div class="pill">Draft or Publish</div>
+          <button
+            v-if="showAddMore"
+            type="button"
+            class="pill add-more"
+            @click="resetForm"
+          >
+            Add More
+          </button>
+        </div>
       </div>
 
       <div v-if="status.message" class="status" :class="status.type">{{ status.message }}</div>
@@ -175,25 +185,30 @@ const isEdit = ref(!!route.params.id)
 const plans = ref([])
 const status = reactive({ message: '', type: 'success' })
 const loading = ref(false)
+const showAddMore = ref(!!route.params.id)
 
-const form = reactive({
-  subscription_tier: '',
-  title: '',
-  slug: '',
-  description: '',
-  content_type: 'article',
-  post_image_file: null,
-  post_image_preview: '',
-  thumbnail_file: null,
-  thumbnail_preview: '',
-  is_featured: false,
-  is_published: false,
-  is_ppv: false,
-  ppv_price: '',
-  ppv_currency: 'USD',
-  ppv_expires_in_days: '',
-  required_tier: 1,
-})
+const form = reactive({})
+
+const setFormDefaults = () => {
+  form.subscription_tier = ''
+  form.title = ''
+  form.slug = ''
+  form.description = ''
+  form.content_type = 'article'
+  form.post_image_file = null
+  form.post_image_preview = ''
+  form.thumbnail_file = null
+  form.thumbnail_preview = ''
+  form.is_featured = false
+  form.is_published = false
+  form.is_ppv = false
+  form.ppv_price = ''
+  form.ppv_currency = 'USD'
+  form.ppv_expires_in_days = ''
+  form.required_tier = 1
+}
+
+setFormDefaults()
 
 const noop = () => {}
 
@@ -323,7 +338,10 @@ const saveDraft = async () => {
       await contentService.create(payload)
       status.message = 'Post created successfully.'
       status.type = 'success'
+      isEdit.value = false
     }
+    showAddMore.value = true
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
     status.message = 'Unable to create post. Please try again.'
     status.type = 'error'
@@ -373,6 +391,18 @@ const goToCreate = () => {
   router.push(`/creator/${username.value}/create-post`)
 }
 
+const resetForm = () => {
+  setFormDefaults()
+  status.message = ''
+  status.type = 'success'
+  showAddMore.value = false
+  // when coming from edit, ensure fresh create route
+  if (route.params.id) {
+    router.push(`/creator/${username.value}/create-post`)
+    isEdit.value = false
+  }
+}
+
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -413,6 +443,27 @@ onMounted(() => {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.pill-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-more {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1d8cb;
+  color: #7a554b;
+  background: #fff7f3;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.add-more:hover {
+  background: #ffd7c3;
+  border-color: #f0b59c;
 }
 
 .card-header h3 {

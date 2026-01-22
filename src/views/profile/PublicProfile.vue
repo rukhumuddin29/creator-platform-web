@@ -1,5 +1,26 @@
 <template>
-  <div class="public-profile">
+  <div :class="['public-profile', userRoleClass]">
+    <CreatorHeader
+      v-if="userRole === 'creator'"
+      :name="currentUser?.name || 'Creator'"
+      :avatar="currentUser?.avatar_url"
+      :tagline="currentUser?.tagline || 'Welcome back!'"
+      @add="goCreatorAddPost"
+      @logout="logout"
+    />
+    <CreatorNav
+      v-if="userRole === 'creator'"
+      :username="slugify(currentUser?.name || route.params.username || 'creator')"
+    />
+    <SubscriberHeader
+      v-else-if="userRole === 'subscriber'"
+      :name="currentUser?.name || 'Subscriber'"
+      :avatar="currentUser?.avatar_url"
+      @home="goSubscriberHome"
+      @subscriptions="goSubscriberSubs"
+      @following="goSubscriberFollowing"
+      @logout="logout"
+    />
     <div class="overlay" v-if="loading">
       <div class="spinner"></div>
     </div>
@@ -32,7 +53,7 @@
       </div>
     </div>
 
-    <section class="featured">
+   <section class="featured">
       <div class="section-head">
         <h3>Featured Posts</h3>
       </div>
@@ -44,8 +65,8 @@
           :class="{ large: idx === 1 && visiblePosts.length > 1, small: idx !== 1 || visiblePosts.length <= 1 }"
           role="button"
           tabindex="0"
-          @click="openPlanModal"
-          @keyup.enter="openPlanModal"
+          @click="item.locked ? openPlanModal() : goToPost(item)"
+          @keyup.enter="item.locked ? openPlanModal() : goToPost(item)"
         >
           <div class="img-wrap">
             <div v-if="item.locked" class="lock-wrap">
@@ -141,6 +162,9 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api, { API_BASE_URL } from '../../services/api'
+import CreatorHeader from '../../components/creator/CreatorHeader.vue'
+import CreatorNav from '../../components/creator/CreatorNav.vue'
+import SubscriberHeader from '../../components/subscriber/SubscriberHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -169,6 +193,14 @@ const visiblePosts = computed(() => {
 const defaultAvatar =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 100 100"><rect width="100" height="100" rx="18" fill="%23f3f4f6"/><circle cx="50" cy="38" r="18" fill="%239ca3af"/><path d="M20 86c4-16 24-20 30-20s26 4 30 20H20z" fill="%239ca3af"/></svg>'
 
+const currentUser = ref(null)
+const userRole = ref('guest') // guest | creator | subscriber
+const userRoleClass = computed(() => {
+  if (userRole.value === 'creator') return 'creator-view'
+  if (userRole.value === 'subscriber') return 'subscriber-view'
+  return ''
+})
+
 const planModal = reactive({
   open: false,
   loading: false,
@@ -186,6 +218,7 @@ const fetchProfile = async () => {
       const base = API_BASE_URL.replace(/\/api$/, '')
       profile.avatar_url = `${base}${profile.avatar_url.startsWith('/') ? '' : '/'}${profile.avatar_url}`
     }
+    await loadCurrentUser()
     await fetchContent(username)
   } catch (e) {
     console.error('Failed to load profile', e)
@@ -199,7 +232,9 @@ const fetchContent = async (username) => {
     const { data } = await api.get(`/public/content/${username}`)
     const list = data?.data || []
     featuredPosts.value = list.map((item) => ({
+      id: item.id,
       title: item.title,
+      slug: item.slug,
       image: resolveMedia(item.thumbnail_url || item.media_url),
       locked: item.locked ?? false,
     }))
@@ -240,8 +275,70 @@ const nextSlide = () => {
   startIndex.value = (startIndex.value + 1) % featuredPosts.value.length
 }
 
+const goToPost = (item) => {
+  if (!item?.slug) return
+  router.push({ name: 'PublicPost', params: { slug: item.slug } }).catch(() => {})
+}
+
 const detectMobile = () => {
   isMobile.value = window.innerWidth <= 900
+}
+
+const slugify = (name = '') => name.toString().trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+const loadCurrentUser = async () => {
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    userRole.value = 'guest'
+    currentUser.value = null
+    return
+  }
+  try {
+    const { data } = await api.get('/auth/profile')
+    const u = data?.data || {}
+    currentUser.value = u
+    const roleNames = (u.roles || u.role_names || []).map((r) => (typeof r === 'string' ? r : r.name)).map((r) => r.toLowerCase())
+    if (roleNames.includes('creator')) {
+      userRole.value = 'creator'
+    } else if (roleNames.includes('subscriber')) {
+      userRole.value = 'subscriber'
+    } else {
+      userRole.value = 'guest'
+    }
+  } catch (err) {
+    console.error('Failed to load current user', err)
+    userRole.value = 'guest'
+  }
+}
+
+const goCreatorAddPost = () => {
+  if (!currentUser.value) return
+  const slug = slugify(currentUser.value.name || 'creator')
+  router.push({ name: 'CreatorCreatePost', params: { username: slug } }).catch(() => {})
+}
+
+const logout = () => {
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('user')
+  router.push('/login')
+}
+
+const goSubscriberHome = () => {
+  if (!currentUser.value) return
+  const slug = slugify(currentUser.value.name || 'subscriber')
+  router.push({ name: 'SubscriberDashboard', params: { username: slug } }).catch(() => {})
+}
+
+const goSubscriberSubs = () => {
+  if (!currentUser.value) return
+  const slug = slugify(currentUser.value.name || 'subscriber')
+  router.push({ name: 'SubscriberSubscriptions', params: { username: slug } }).catch(() => {})
+}
+
+const goSubscriberFollowing = () => {
+  if (!currentUser.value) return
+  const slug = slugify(currentUser.value.name || 'subscriber')
+  router.push({ name: 'SubscriberFollowing', params: { username: slug } }).catch(() => {})
 }
 
 const openPlanModal = async () => {
@@ -305,13 +402,20 @@ onUnmounted(() => {
 .public-profile {
   min-height: 100vh;
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
   background: linear-gradient(180deg, #fce5dc 0%, #fff6f2 100%);
-  padding: 40px 24px 64px;
   position: relative;
   flex-direction: column;
   gap: 28px;
+}
+
+.public-profile.creator-view {
+  padding: 24px;
+}
+
+.public-profile.subscriber-view,
+.public-profile.guest-view,
+.public-profile {
+  padding: 0;
 }
 
 .card {
