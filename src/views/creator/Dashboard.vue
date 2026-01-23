@@ -1,6 +1,6 @@
 ﻿<template>
   <div class="creator-page">
-<CreatorHeader :name="displayName" :avatar="headerAvatar" @add="handleAddPost" />
+<CreatorHeader :name="displayName" :avatar="headerAvatar" @add="handleAddPost" @logout="handleLogout" />
     <CreatorNav :username="username" />
 
     <section class="stats-grid">
@@ -111,9 +111,11 @@ import { useRoute, useRouter } from 'vue-router'
 import CreatorHeader from '../../components/creator/CreatorHeader.vue'
 import CreatorNav from '../../components/creator/CreatorNav.vue'
 import { contentService, creatorSubscriberService } from '../../services'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const username = computed(() => route.params.username || 'creator')
 const displayName = computed(() => decodeURIComponent(username.value))
 const headerAvatar = computed(() => {
@@ -127,6 +129,11 @@ const headerAvatar = computed(() => {
 
 const handleAddPost = () => {
   router.push({ name: 'CreatorCreatePost', params: { username: username.value } })
+}
+
+const handleLogout = async () => {
+  await authStore.logout()
+  router.push('/login')
 }
 
 const goToPosts = () => {

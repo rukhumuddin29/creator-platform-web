@@ -53,7 +53,7 @@
       </div>
     </div>
 
-   <section class="featured">
+    <section class="featured">
       <div class="section-head">
         <h3>Featured Posts</h3>
       </div>
@@ -65,14 +65,15 @@
           :class="{ large: idx === 1 && visiblePosts.length > 1, small: idx !== 1 || visiblePosts.length <= 1 }"
           role="button"
           tabindex="0"
-          @click="item.locked ? openPlanModal() : goToPost(item)"
-          @keyup.enter="item.locked ? openPlanModal() : goToPost(item)"
+          @click="goToPost(item)"
+          @keyup.enter="goToPost(item)"
         >
           <div class="img-wrap">
             <div v-if="item.locked" class="lock-wrap">
               <i class="pi pi-lock"></i>
             </div>
             <img v-else :src="item.image" :alt="item.title" />
+            <div class="pill plan-pill">{{ pillLabel(item) }}</div>
             <div v-if="featuredPosts.length > 1 && idx === 0" class="inline-controls">
               <button @click="prevSlide" aria-label="Previous posts">
                 <i class="pi pi-chevron-left"></i>
@@ -84,6 +85,39 @@
           </div>
           <h4>{{ item.title }}</h4>
         </div>
+      </div>
+    </section>
+
+    <section class="regular">
+      <div class="section-head">
+        <h3>Check Out All My Posts Here</h3>
+      </div>
+      <div class="regular-grid">
+        <div
+          v-for="item in regularVisible"
+          :key="`regular-${item.id}`"
+          class="regular-card"
+          role="button"
+          tabindex="0"
+          @click="goToPost(item)"
+          @keyup.enter="goToPost(item)"
+        >
+          <div class="regular-img">
+            <div v-if="item.locked" class="lock-wrap">
+              <i class="pi pi-lock"></i>
+            </div>
+            <img v-else :src="item.image" :alt="item.title" />
+            <div class="pill plan-pill">{{ pillLabel(item) }}</div>
+          </div>
+          <div class="regular-body">
+            <h4>{{ item.title }}</h4>
+            <p class="muted price">{{ priceLabel(item) }}</p>
+            <p class="muted added">{{ addedLabel(item) }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="load-more" v-if="regularHasMore">
+        <button class="load-btn" @click="loadMoreRegular">Load More</button>
       </div>
     </section>
 
@@ -155,6 +189,42 @@
         </div>
       </div>
     </div>
+
+    <div v-if="ppvModal.open" class="modal-backdrop" @click.self="ppvModal.open = false">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <h4>Unlock Post</h4>
+            <p class="muted">{{ ppvModal.title || 'This post is PPV.' }}</p>
+          </div>
+          <div class="head-actions">
+            <button class="close-btn" @click="ppvModal.open = false" aria-label="Close">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="primary w-full" @click="goToCheckoutPost">Unlock this post</button>
+          <button class="primary alt w-full" @click="goToSubscriptionPlans">Subscribe Now</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="viewModal.open" class="view-backdrop" @click.self="viewModal.open = false">
+      <div class="view-modal">
+        <div class="view-media">
+          <img :src="viewModal.image" :alt="viewModal.title" />
+        </div>
+        <div class="view-body">
+          <h3>{{ viewModal.title }}</h3>
+          <p class="muted">{{ viewModal.description }}</p>
+          <p class="muted small" v-if="viewModal.created_at">Added {{ new Date(viewModal.created_at).toLocaleString() }}</p>
+          <button class="close-btn" @click="viewModal.open = false" aria-label="Close">
+            <i class="pi pi-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -165,9 +235,11 @@ import api, { API_BASE_URL } from '../../services/api'
 import CreatorHeader from '../../components/creator/CreatorHeader.vue'
 import CreatorNav from '../../components/creator/CreatorNav.vue'
 import SubscriberHeader from '../../components/subscriber/SubscriberHeader.vue'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(true)
 const isMobile = ref(false)
 const profile = reactive({
@@ -179,6 +251,24 @@ const profile = reactive({
 })
 
 const featuredPosts = ref([])
+const regularPosts = ref([])
+const regularPage = ref(1)
+const regularPerPage = 20
+const regularVisible = computed(() => regularPosts.value.slice(0, regularPage.value * regularPerPage))
+const regularHasMore = computed(() => regularPosts.value.length > regularVisible.value.length)
+const ppvModal = reactive({
+  open: false,
+  slug: '',
+  title: '',
+  price: null,
+})
+const viewModal = reactive({
+  open: false,
+  title: '',
+  description: '',
+  image: '',
+  created_at: '',
+})
 const startIndex = ref(0)
 const visiblePosts = computed(() => {
   if (!featuredPosts.value.length) return []
@@ -231,13 +321,22 @@ const fetchContent = async (username) => {
   try {
     const { data } = await api.get(`/public/content/${username}`)
     const list = data?.data || []
-    featuredPosts.value = list.map((item) => ({
+    const normalized = list.map((item) => ({
       id: item.id,
       title: item.title,
       slug: item.slug,
       image: resolveMedia(item.thumbnail_url || item.media_url),
       locked: item.locked ?? false,
+      is_featured: !!item.is_featured,
+      is_ppv: Boolean(item.is_ppv || item.ppv_price),
+      ppv_price: item.ppv_price,
+      subscription_tier: item.subscription_tier,
+      description: item.description || '',
+      created_at: item.created_at,
+      media_url: resolveMedia(item.media_url),
     }))
+    featuredPosts.value = normalized.filter((i) => i.is_featured)
+    regularPosts.value = normalized.filter((i) => !i.is_featured)
   } catch (e) {
     console.error('Failed to load content', e)
   }
@@ -275,9 +374,60 @@ const nextSlide = () => {
   startIndex.value = (startIndex.value + 1) % featuredPosts.value.length
 }
 
+const loadMoreRegular = () => {
+  regularPage.value += 1
+}
+
+const priceLabel = (item) => {
+  if (item.is_ppv) return `$${formatPrice(item.ppv_price)}`
+  if (item.subscription_tier) return formatPlan(item.subscription_tier)
+  return 'Free'
+}
+
+const addedLabel = (item) => {
+  if (!item.created_at) return ''
+  const created = new Date(item.created_at)
+  let expiry = ''
+  if (item.ppv_expires_in_days) {
+    const exp = new Date(created)
+    exp.setDate(exp.getDate() + Number(item.ppv_expires_in_days))
+    const now = new Date()
+    expiry = now > exp ? 'Post Expired' : `Expiry in ${Math.ceil((exp - now) / (1000 * 60 * 60 * 24))} days`
+  }
+  return `Added ${created.toLocaleDateString()}${expiry ? ' ' + expiry : ''}`
+}
+
 const goToPost = (item) => {
   if (!item?.slug) return
-  router.push({ name: 'PublicPost', params: { slug: item.slug } }).catch(() => {})
+  if (item.locked && userRole.value === 'guest') {
+    if (item.is_ppv === true) {
+      saveIntent({ type: 'ppv', creator: route.params.username, slug: item.slug, price: item.ppv_price })
+    } else {
+      saveIntent({ type: 'subscribe', creator: route.params.username })
+    }
+    router.push('/login')
+    return
+  }
+  if (item.locked && item.is_ppv === true) {
+    ppvModal.open = true
+    ppvModal.slug = item.slug
+    ppvModal.title = item.title
+    ppvModal.price = item.ppv_price
+    return
+  }
+  if (item.locked) {
+    openPlanModal()
+    return
+  }
+  openViewModal(item)
+}
+
+const openViewModal = (item) => {
+  viewModal.open = true
+  viewModal.title = item.title
+  viewModal.description = item.description || ''
+  viewModal.image = item.media_url || item.image
+  viewModal.created_at = item.created_at
 }
 
 const detectMobile = () => {
@@ -285,6 +435,18 @@ const detectMobile = () => {
 }
 
 const slugify = (name = '') => name.toString().trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+const formatPlan = (plan = '') => plan.toString().replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase())
+const formatPrice = (val) => {
+  const num = Number(val || 0)
+  return num.toFixed(2)
+}
+const saveIntent = (intent) => {
+  try {
+    localStorage.setItem('pending_intent', JSON.stringify(intent))
+  } catch (e) {
+    console.error('Failed to persist intent', e)
+  }
+}
 
 const loadCurrentUser = async () => {
   const token = localStorage.getItem('auth_token')
@@ -317,9 +479,11 @@ const goCreatorAddPost = () => {
   router.push({ name: 'CreatorCreatePost', params: { username: slug } }).catch(() => {})
 }
 
-const logout = () => {
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('user')
+const logout = async () => {
+  await authStore.logout()
+  try {
+    delete api.defaults.headers.common.Authorization
+  } catch {}
   router.push('/login')
 }
 
@@ -339,6 +503,16 @@ const goSubscriberFollowing = () => {
   if (!currentUser.value) return
   const slug = slugify(currentUser.value.name || 'subscriber')
   router.push({ name: 'SubscriberFollowing', params: { username: slug } }).catch(() => {})
+}
+
+const pillLabel = (item) => {
+  if (item.is_ppv) {
+    return item.ppv_price ? `$${formatPrice(item.ppv_price)}` : 'PPV'
+  }
+  if (item.subscription_tier) {
+    return formatPlan(item.subscription_tier)
+  }
+  return 'Free'
 }
 
 const openPlanModal = async () => {
@@ -376,15 +550,39 @@ const closePlanModal = () => {
   planModal.open = false
 }
 
-const formatPrice = (val) => {
-  if (val === null || val === undefined || val === '') return 'N/A'
-  const num = Number(val)
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
 const goToCheckout = (plan) => {
   closePlanModal()
+  if (userRole.value === 'guest') {
+    saveIntent({ type: 'subscribe', creator: route.params.username })
+    router.push('/login')
+    return
+  }
   router.push(`/checkout/${route.params.username}/${plan.slug}`)
+}
+
+const goToCheckoutPost = () => {
+  if (!ppvModal.slug) return
+  ppvModal.open = false
+  if (userRole.value === 'guest') {
+    saveIntent({ type: 'ppv', creator: route.params.username, slug: ppvModal.slug, price: ppvModal.price })
+    router.push('/login')
+    return
+  }
+  router.push({
+    name: 'Checkout',
+    params: { username: route.params.username, slug: ppvModal.slug },
+    query: { type: 'ppv', price: ppvModal.price },
+  }).catch(() => {})
+}
+
+const goToSubscriptionPlans = () => {
+  ppvModal.open = false
+  if (userRole.value === 'guest') {
+    saveIntent({ type: 'subscribe', creator: route.params.username })
+    router.push('/login')
+    return
+  }
+  router.push({ name: 'PublicSubscriptionPlans', params: { username: route.params.username } }).catch(() => {})
 }
 
 onMounted(() => {
@@ -589,6 +787,195 @@ onUnmounted(() => {
   font-weight: 800;
   color: #2d1b16;
   text-align: center;
+}
+
+.plan-pill {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #4b2e2b;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid #f5d4c8;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.regular {
+  padding-top: 60px;
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.regular-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 1200px) {
+  .regular-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .regular-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.regular-card {
+  position: relative;
+  background: linear-gradient(180deg, #fff7f2 0%, #fef0e8 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+  overflow: hidden;
+  border: 1px solid #f1d8cb;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.regular-img {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+}
+
+.regular-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.regular-body {
+  padding: 12px 14px 14px;
+}
+
+.regular-body h4 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #2d1b16;
+}
+
+.regular-body .price,
+.regular-body .added {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.load-more {
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+.load-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #f5cbbb;
+  background: #ffe8dd;
+  color: #5a3b32;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.modal-actions .primary,
+.modal-actions .ghost,
+.modal-actions .primary.alt {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.modal-actions .primary:hover,
+.modal-actions .ghost:hover,
+.modal-actions .primary.alt:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.08);
+}
+
+.modal-actions .primary.alt {
+  background: #fff7f2;
+  color: #5a3b32;
+  border: 1px solid #f5cbbb;
+}
+
+.view-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 30;
+}
+
+.view-modal {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+  display: grid;
+  grid-template-columns: 70% 30%;
+  max-width: 1100px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.view-modal .view-body {
+  overflow-y: auto;
+}
+
+.view-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-body {
+  padding: 18px;
+  position: relative;
+  background: linear-gradient(180deg, #fff8f4 0%, #ffece3 100%);
+}
+
+.view-body h3 {
+  margin: 0 0 8px;
+  color: #2d1b16;
+}
+
+.view-body p {
+  margin: 4px 0;
+}
+
+.view-body .close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #fff;
+  border: 1px solid #f1d8cb;
+  color: #2d1b16;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 900px) {
+  .view-modal {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {

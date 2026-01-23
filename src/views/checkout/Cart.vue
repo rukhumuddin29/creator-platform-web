@@ -114,6 +114,15 @@ const route = useRoute()
 const router = useRouter()
 const username = route.params.username
 const planSlug = route.params.slug
+const checkoutType = computed(() => {
+  const t = (route.query.type || '').toString().toLowerCase()
+  return t === 'ppv' ? 'ppv' : 'subscription'
+})
+const queryPrice = computed(() => {
+  const val = route.query.price
+  const num = Number(val)
+  return Number.isFinite(num) && num > 0 ? num : null
+})
 
 const status = reactive({ message: '', type: 'success' })
 const plan = ref(null)
@@ -142,12 +151,23 @@ const form = reactive({
 })
 
 const billingOptions = computed(() => {
-  if (!plan.value) return []
   const options = []
-  if (plan.value.monthly_price) options.push({ value: 'monthly', label: `Monthly - ${formatPrice(plan.value.monthly_price)}` })
-  if (plan.value.quarterly_price) options.push({ value: 'quarterly', label: `Quarterly - ${formatPrice(plan.value.quarterly_price)}` })
-  if (plan.value.half_yearly_price) options.push({ value: 'half_yearly', label: `Half-yearly - ${formatPrice(plan.value.half_yearly_price)}` })
-  if (plan.value.yearly_price) options.push({ value: 'yearly', label: `Yearly - ${formatPrice(plan.value.yearly_price)}` })
+  if (checkoutType.value === 'ppv') {
+    const price =
+      queryPrice.value ??
+      plan.value?.ppv_price ??
+      plan.value?.price ??
+      plan.value?.amount
+    if (price) {
+      options.push({ value: 'one_time', label: `One-time - ${formatPrice(price)}`, amount: Number(price) })
+    }
+    return options
+  }
+  if (!plan.value) return options
+  if (plan.value.monthly_price) options.push({ value: 'monthly', label: `Monthly - ${formatPrice(plan.value.monthly_price)}`, amount: Number(plan.value.monthly_price) })
+  if (plan.value.quarterly_price) options.push({ value: 'quarterly', label: `Quarterly - ${formatPrice(plan.value.quarterly_price)}`, amount: Number(plan.value.quarterly_price) })
+  if (plan.value.half_yearly_price) options.push({ value: 'half_yearly', label: `Half-yearly - ${formatPrice(plan.value.half_yearly_price)}`, amount: Number(plan.value.half_yearly_price) })
+  if (plan.value.yearly_price) options.push({ value: 'yearly', label: `Yearly - ${formatPrice(plan.value.yearly_price)}`, amount: Number(plan.value.yearly_price) })
   return options
 })
 
@@ -158,7 +178,10 @@ const selectedPeriodLabel = computed(() => {
 
 const formattedAmount = computed(() => {
   const opt = billingOptions.value.find(o => o.value === billingPeriod.value)
-  return opt ? opt.label.split(' - ')[1] : ''
+  if (!opt) return ''
+  if (opt.amount) return formatPrice(opt.amount)
+  const parts = opt.label.split(' - ')
+  return parts[1] || ''
 })
 
 const resolveMedia = (url = '') => {
@@ -174,6 +197,42 @@ const formatPrice = (val) => {
 }
 
 const loadPlan = async () => {
+  if (checkoutType.value === 'ppv') {
+    // Build plan using query price first, then attempt to hydrate from public list (optional)
+    let price = Number(queryPrice.value || 0)
+    let thumb = ''
+    let title = planSlug
+    try {
+      const { data } = await api.get(`/public/content/${username}`)
+      const list = data?.data || []
+      const post = list.find((p) => p.slug === planSlug)
+      if (post) {
+        title = post.title || title
+        price = Number(post.ppv_price || post.price || post.amount || price)
+        thumb = post.thumbnail_url || post.media_url || thumb
+      }
+    } catch (e) {
+      console.warn('PPV post fetch failed, using query price', e)
+    }
+
+    if (!price || Number.isNaN(price)) {
+      status.message = 'Could not load checkout details.'
+      status.type = 'error'
+      return
+    }
+    plan.value = {
+      name: title || 'PPV Post',
+      slug: planSlug,
+      ppv_price: price,
+      plan_thumbnail_url: thumb,
+      subtitle: 'Pay per view',
+    }
+    billingPeriod.value = 'one_time'
+    publishableKey.value = import.meta.env.VITE_STRIPE_KEY || ''
+    await mountCard()
+    return
+  }
+
   const { data } = await checkoutService.getPublicPlan(planSlug)
   plan.value = data?.data || data
   const opts = billingOptions.value
@@ -207,7 +266,12 @@ const submitCheckout = async () => {
   }
 
   try {
-    const { data } = await checkoutService.createIntent(plan.value.slug, billingPeriod.value)
+    const billingArg = checkoutType.value === 'ppv' ? null : billingPeriod.value
+    const { data } = await checkoutService.createIntent(
+      plan.value.slug,
+      billingArg,
+      { type: checkoutType.value, post_slug: checkoutType.value === 'ppv' ? plan.value.slug : undefined }
+    )
     clientSecret.value = data?.data?.client_secret || data?.client_secret
     publishableKey.value = data?.data?.publishable_key || data?.publishable_key || publishableKey.value
     paymentId.value = data?.data?.payment_id || data?.payment_id

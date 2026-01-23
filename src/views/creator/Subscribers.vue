@@ -111,9 +111,9 @@ const changePage = (p) => {
   loadSubs()
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('user')
+const handleLogout = async () => {
+  const authStore = useAuthStore()
+  await authStore.logout()
   router.push('/login')
 }
 

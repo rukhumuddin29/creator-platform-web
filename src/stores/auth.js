@@ -13,7 +13,14 @@ export const useAuthStore = defineStore('auth', () => {
     const storedUser = localStorage.getItem('user')
     const storedToken = localStorage.getItem('auth_token')
     if (storedUser) user.value = JSON.parse(storedUser)
-    if (storedToken) token.value = storedToken
+    if (storedToken) {
+      token.value = storedToken
+      try {
+        import('../services/api').then((m) => {
+          m.default.defaults.headers.common.Authorization = `Bearer ${storedToken}`
+        })
+      } catch {}
+    }
   }
 
   const isAuthenticated = computed(() => !!token.value)
@@ -54,7 +61,11 @@ export const useAuthStore = defineStore('auth', () => {
       return `/creator/${encodeURIComponent(slug)}`
     }
 
-    if (isSubscriber.value) return '/subscriber/overview'
+    if (isSubscriber.value) {
+      const raw = user.value?.username || user.value?.name || 'me'
+      const slug = (raw || 'me').toString().trim().toLowerCase().replace(/\s+/g, '-')
+      return `/subscriber/${encodeURIComponent(slug)}`
+    }
 
     return '/dashboard'
   })
@@ -63,17 +74,37 @@ export const useAuthStore = defineStore('auth', () => {
   const loginPath = computed(() => (isAdmin.value ? '/secret-admin-login' : '/login'))
   const getLoginPath = () => loginPath.value
 
+  const consumePendingIntent = () => {
+    const raw = localStorage.getItem('pending_intent')
+    if (!raw) return null
+    try {
+      const intent = JSON.parse(raw)
+      localStorage.removeItem('pending_intent')
+      return intent
+    } catch {
+      localStorage.removeItem('pending_intent')
+      return null
+    }
+  }
+
   const register = async (data) => {
     isLoading.value = true
     error.value = null
     try {
       const response = await authService.register(data)
-      user.value = response.data.data.user
-      token.value = response.data.data.token
-      localStorage.setItem('auth_token', token.value)
-      // refresh profile to hydrate roles/details
-      await getProfile()
-      localStorage.setItem('user', JSON.stringify(user.value))
+      const payload = response.data?.data || response.data || {}
+      user.value = payload.user || payload
+      token.value = payload.token || payload.access_token || (payload.token_type === 'Bearer' ? payload.access_token : payload.token)
+      if (token.value) {
+        localStorage.setItem('auth_token', token.value)
+        try {
+          const api = (await import('../services/api')).default
+          api.defaults.headers.common.Authorization = `Bearer ${token.value}`
+        } catch {}
+      }
+      if (user.value) {
+        localStorage.setItem('user', JSON.stringify(user.value))
+      }
       return response.data
     } catch (err) {
       error.value = err.response?.data?.message || 'Registration failed'
@@ -88,11 +119,22 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       const response = await authService.login(email, password)
-      user.value = response.data.data.user
-      token.value = response.data.data.token
-      localStorage.setItem('auth_token', token.value)
-      // refresh profile to hydrate roles/details
-      await getProfile()
+      const payload = response.data?.data || response.data
+      user.value = payload.user
+      token.value = payload.token || payload.access_token || (payload.token_type === 'Bearer' ? payload.access_token : payload.token)
+      if (token.value) {
+        localStorage.setItem('auth_token', token.value)
+        try {
+          const api = (await import('../services/api')).default
+          api.defaults.headers.common.Authorization = `Bearer ${token.value}`
+        } catch {}
+      }
+      // refresh profile to hydrate roles/details (non-blocking)
+      try {
+        await getProfile()
+      } catch (profileErr) {
+        console.warn('Profile fetch after login failed; continuing with payload user', profileErr)
+      }
       localStorage.setItem('user', JSON.stringify(user.value))
       return response.data
     } catch (err) {
@@ -113,6 +155,11 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null
       localStorage.removeItem('user')
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('pending_intent')
+      try {
+        const api = (await import('../services/api')).default
+        delete api.defaults.headers.common.Authorization
+      } catch {}
     }
   }
 
@@ -165,5 +212,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     getProfile,
     updateProfile,
+    consumePendingIntent,
   }
 })

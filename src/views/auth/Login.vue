@@ -69,7 +69,14 @@ const handleLogin = async () => {
   errorMessage.value = ''
   try {
     await authStore.login(email.value, password.value)
-    router.push(authStore.getDashboardPath())
+    const intent = authStore.consumePendingIntent?.() || null
+    if (intent?.type === 'ppv' && intent.creator && intent.slug) {
+      router.push({ name: 'Checkout', params: { username: intent.creator, slug: intent.slug } })
+    } else if (intent?.type === 'subscribe' && intent.creator) {
+      router.push({ name: 'PublicSubscriptionPlans', params: { username: intent.creator } })
+    } else {
+      router.push(authStore.getDashboardPath())
+    }
   } catch (error) {
     errorMessage.value = authStore.error || 'Login failed. Please try again.'
   } finally {

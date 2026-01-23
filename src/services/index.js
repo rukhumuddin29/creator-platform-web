@@ -96,11 +96,20 @@ export const billingService = {
 }
 
 export const checkoutService = {
-  createIntent(subscriptionSlug, billingPeriod) {
-    return api.post('/checkout/intent', {
-      subscription_slug: subscriptionSlug,
+  createIntent(targetSlug, billingPeriod, extra = {}) {
+    const payload = {
       billing_period: billingPeriod,
-    })
+      ...extra,
+    }
+    if (extra.type === 'ppv') {
+      payload.post_slug = targetSlug
+      payload.is_ppv = true
+      delete payload.subscription_slug
+      if (!payload.billing_period) delete payload.billing_period
+    } else {
+      payload.subscription_slug = targetSlug
+    }
+    return api.post('/checkout/intent', payload)
   },
   getPublicPlan(slug) {
     return api.get(`/public/subscription/${slug}`)

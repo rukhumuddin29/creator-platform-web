@@ -118,6 +118,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SubscriberHeader from '../../components/subscriber/SubscriberHeader.vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -184,9 +185,10 @@ const headerAvatar = computed(() => {
   }
 })
 
-const handleLogout = () => {
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('user')
+const authStore = useAuthStore()
+
+const handleLogout = async () => {
+  await authStore.logout()
   router.push('/login')
 }
 
